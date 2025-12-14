@@ -1,23 +1,18 @@
 import { redis } from "../../lib/redis.js";
 
-export async function initSession(userId: number) {
+export async function initSession(userId: number, publicKey: string) {
 
-    const exists = await redis.exists(`tg:session:${userId}`);
+    await redis.hSet(`tg:session:${userId}`, {
 
-    if(!exists) {
+        publicKey,
 
-        await redis.hSet(`tg:session:${userId}`, {
+        action: "IDLE",
 
-            action: "IDLE",
+        step: "",
             
-            params: JSON.stringify({})
+        params: JSON.stringify({})
         
-        });
+    });
 
-        console.log("Initialized state for user:",userId);
-    
-    } else {
-
-        console.log("State already existed for user:", userId);
-    }
+    console.log("Initialized state for user:",userId);
 }

@@ -12,6 +12,14 @@ const redis = createClient({url: REDIS_URL});
 
 redis.on("error", (err) => console.log("Redis Client Error: ", err));
 
-await redis.connect();
+await redis.connect().catch((err) => {
+
+    console.error("Failed to connect to redis: ", err);
+
+    process.exit(1);
+
+});
+
+console.log("Connected to Redis:", REDIS_URL);
 
 export { redis };
