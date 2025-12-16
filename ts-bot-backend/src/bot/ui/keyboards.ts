@@ -8,6 +8,22 @@ export const createWalletKeyboard = Markup.inlineKeyboard([
 
 export const homeKeyboard = Markup.inlineKeyboard([
 
-    Markup.button.callback("Show Address", "SHOW_ADDRESS")
+    [   Markup.button.callback("Show Address", "SHOW_ADDRESS"),
+
+        Markup.button.callback("Transfer SOL", "TRANSFER_SOL")
+    ]
 
 ]);
+
+export const getBackHomeKeyboard = Markup.inlineKeyboard([
+
+    Markup.button.callback("Go back Home", "HOME")
+]);
+
+export const executeTransactionKeyboard = Markup.inlineKeyboard([
+
+    [   Markup.button.callback("Execute Transaction", "EXECUTE"),
+
+        Markup.button.callback("Go back Home", "HOME")
+    ]
+])
