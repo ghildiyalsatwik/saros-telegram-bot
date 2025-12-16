@@ -15,6 +15,7 @@ import { isBalanceAvailable } from "../utils/isBalanceAvailable.js";
 import { buildTransferTransaction } from "../services/buildTransferTransaction.js";
 import { signTransaction } from "../services/signTransaction.js";
 import { sendTransaction } from "../services/sendTransaction.js";
+import { getBalanceInSolana } from "../utils/getBalanceInSolana.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
@@ -222,6 +223,22 @@ bot.action("HOME", async (ctx) => {
     await setHomeState(userId);
 
     return ctx.reply(getDefaultMessage(), homeKeyboard);
+
+});
+
+bot.action("SOL_BALANCE", async (ctx) => {
+
+    await ctx.answerCbQuery("Fetching your Solana balance.");
+
+    const userId = ctx.from.id;
+
+    const session = await getSession(userId);
+
+    const pubkey = session!.publicKey!;
+
+    const balance = await getBalanceInSolana(pubkey);
+
+    return ctx.reply(`Your wallet: ${pubkey} has ${balance} Solana.`, homeKeyboard);
 
 });
 

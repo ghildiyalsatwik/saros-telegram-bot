@@ -10,7 +10,9 @@ export const homeKeyboard = Markup.inlineKeyboard([
 
     [   Markup.button.callback("Show Address", "SHOW_ADDRESS"),
 
-        Markup.button.callback("Transfer SOL", "TRANSFER_SOL")
+        Markup.button.callback("Transfer SOL", "TRANSFER_SOL"),
+
+        Markup.button.callback("Show SOL Balance", "SOL_BALANCE")
     ]
 
 ]);
