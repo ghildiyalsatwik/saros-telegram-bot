@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.js";
+import { decryptPrivateKey } from "../utils/decryptPrivateKey.js";
 
 export async function getPrivateKey(userId: number) {
 
@@ -7,5 +8,7 @@ export async function getPrivateKey(userId: number) {
         where: { telegramId: BigInt(userId) } 
     });
 
-    return user!.privateKey;
+    const privateKey = decryptPrivateKey(user!.encryptedPrivateKey);
+
+    return privateKey;
 }

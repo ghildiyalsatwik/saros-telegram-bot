@@ -276,7 +276,6 @@ bot.action("EXECUTE", async(ctx) => {
         );
     }
 
-
 });
 
 async function startBot(): Promise<void> {

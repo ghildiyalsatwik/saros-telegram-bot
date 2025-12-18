@@ -1,6 +1,7 @@
 import { Keypair } from "@solana/web3.js";
 import bs58 from "bs58";
 import { createUserInDB } from "../db/user.js";
+import { encryptPrivateKey } from "../utils/ecryptPrivateKey.js";
 
 export async function createUserWallet(telegramId: number) {
 
@@ -10,7 +11,9 @@ export async function createUserWallet(telegramId: number) {
 
     const privateKey = bs58.encode(keypair.secretKey);
 
-    await createUserInDB(telegramId, publicKey, privateKey);
+    const encryptedPrivateKey = encryptPrivateKey(privateKey);
+
+    await createUserInDB(telegramId, publicKey, encryptedPrivateKey);
 
     return { publicKey };
 }

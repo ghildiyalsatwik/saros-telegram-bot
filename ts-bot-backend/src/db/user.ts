@@ -11,7 +11,7 @@ export async function findUserByTelegramId(telegramId: number) {
     });
 }
 
-export async function createUserInDB(telegramId: number, publicKey: string, privateKey: string) {
+export async function createUserInDB(telegramId: number, publicKey: string, encryptedPrivateKey: string) {
 
     console.log("Creating record in the database for user:", telegramId);
 
@@ -23,7 +23,7 @@ export async function createUserInDB(telegramId: number, publicKey: string, priv
 
             publicKey,
 
-            privateKey
+            encryptedPrivateKey
         },
     });
 }
