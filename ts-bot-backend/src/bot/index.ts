@@ -13,9 +13,16 @@ import { isValidSolanaAddress } from "../utils/validSolanaAddress.js";
 import { isAmountValid } from "../utils/isAmountValid.js";
 import { isBalanceAvailable } from "../utils/isBalanceAvailable.js";
 import { buildTransferTransaction } from "../services/buildTransferTransaction.js";
-import { signTransaction } from "../services/signTransaction.js";
-import { sendTransaction } from "../services/sendTransaction.js";
+import { signSolTransferTransaction } from "../services/signSolTransferTransaction.js";
+import { sendSolTransferTransaction } from "../services/sendSolTransferTransaction.js";
 import { getBalanceInSolana } from "../utils/getBalanceInSolana.js";
+import { setLaunchTokenStateStep1, setLaunchTokenStateStep2, setLaunchTokenStateStep3, setLaunchTokenStateStep4 } from "./state/launchTokenState.js";
+import { buildLaunchTokenTransaction } from "../services/buildLaunchTokenTransaction.js";
+import { signLaunchTokenTransaction } from "../services/signLaunchTokenTransaction.js";
+import { sendLaunchTokenTransaction } from "../services/sendLaunchTokenTransaction.js";
+import { createTokenInDb } from "../db/token.js";
+import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
@@ -150,6 +157,62 @@ bot.on(message("text"), async (ctx) => {
         }
     }
 
+    if(session.action === "LAUNCH_TOKEN") {
+
+        if(session.step === "1") {
+
+            const name = ctx.message.text;
+
+            await setLaunchTokenStateStep2(userId, name);
+
+            return ctx.reply("Received token name.\nNow please enter the token ticker.", 
+                    
+                { parse_mode: "Markdown", ...getBackHomeKeyboard}
+            )
+
+        }
+
+        if(session.step === "2") {
+
+            const ticker = ctx.message.text;
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const name = parsedParams.name;
+
+            await setLaunchTokenStateStep3(userId, name, ticker);
+
+            return ctx.reply("Received token ticker.\nNow please enter the number of token decimals.", 
+                    
+                { parse_mode: "Markdown", ...getBackHomeKeyboard}
+            )
+
+        }
+
+
+        if(session.step === "3") {
+
+            const decimals = ctx.message.text;
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const name = parsedParams.name;
+
+            const ticker = parsedParams.ticker;
+
+            await setLaunchTokenStateStep4(userId, name, ticker, decimals);
+
+            return ctx.reply(
+        
+                "Press execute to confirm transaction and launch token.",
+        
+                { parse_mode: "Markdown", ...executeTransactionKeyboard}
+            );
+
+        }
+
+    }
+
 });
 
 bot.action("CREATE_WALLET", async (ctx) => {
@@ -226,6 +289,22 @@ bot.action("HOME", async (ctx) => {
 
 });
 
+bot.action("LAUNCH_TOKEN", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    await ctx.answerCbQuery("Preparing to launch token.");
+
+    await setLaunchTokenStateStep1(userId);
+
+    return ctx.reply("Please enter the name for your new token.",
+        
+        {parse_mode: "Markdown", ...getBackHomeKeyboard}
+    
+    );
+
+});
+
 bot.action("SOL_BALANCE", async (ctx) => {
 
     await ctx.answerCbQuery("Fetching your Solana balance.");
@@ -262,9 +341,9 @@ bot.action("EXECUTE", async(ctx) => {
 
         const tx = await buildTransferTransaction(from, parsedParams.to, parseFloat(parsedParams.amount));
 
-        const txSigned = await signTransaction(userId, tx);
+        const txSigned = await signSolTransferTransaction(userId, tx);
 
-        const sig = await sendTransaction(userId, txSigned);
+        const sig = await sendSolTransferTransaction(userId, txSigned);
 
         await setHomeState(userId);
 
@@ -274,6 +353,41 @@ bot.action("EXECUTE", async(ctx) => {
     
             { parse_mode: "Markdown", ...homeKeyboard}
         );
+    }
+
+    if(session!.action === "LAUNCH_TOKEN") {
+
+        const userPubKey = session?.publicKey!;
+
+        const params = session?.params!;
+
+        const parsedParams = JSON.parse(params);
+
+        const name = parsedParams.name;
+
+        const ticker = parsedParams.ticker;
+
+        const decimals = parsedParams.decimals;
+
+        const {tx, mintKeypair} = await buildLaunchTokenTransaction(userPubKey, name, ticker, parseInt(decimals), userId);
+
+        const mintAddress = mintKeypair.publicKey.toBase58();
+
+        const txSigned = await signLaunchTokenTransaction(tx, mintKeypair, userId);
+
+        const sig = await sendLaunchTokenTransaction(userId, txSigned, mintKeypair);
+
+        await createTokenInDb(userId, mintAddress, name, ticker, decimals, TOKEN_2022_PROGRAM_ID.toBase58());
+
+        await setHomeState(userId);
+
+        return ctx.reply(
+        
+            `Your transaction is confirmed!\n${name} has been launched at address: ${mintAddress}.\nTransaction Signature: ${sig}`,
+    
+            { parse_mode: "Markdown", ...homeKeyboard}
+        );
+
     }
 
 });

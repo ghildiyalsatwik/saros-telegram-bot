@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "reset": "docker exec -it redis-local redis-cli FLUSHALL && prisma migrate reset --force"
+    "reset": "docker exec -it redis-local redis-cli FLUSHALL && prisma migrate reset --force",
+    "reset-redis": "docker exec -t redis-local redis-cli FLUSHALL",
+    "reset-db": "prisma migrate reset --force"
   },
   "keywords": [],
   "author": "",
@@ -18,9 +20,12 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@pinata/sdk": "^2.1.0",
     "@prisma/adapter-pg": "^7.1.0",
     "@prisma/client": "^7.1.0",
     "@saros-finance/dlmm-sdk": "^2.0.1",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/spl-token-metadata": "^0.1.6",
     "@solana/web3.js": "^1.98.4",
     "bs58": "^6.0.0",
     "crypto": "^1.0.1",

@@ -20,4 +20,18 @@ model User {
   publicKey   String
   encryptedPrivateKey  String
 
+  MintedTokens        MintedToken[]
+
+}
+
+model MintedToken {
+  id           String   @id @default(cuid())
+  telegramId   BigInt
+  mintAddress  String   @unique
+  name         String
+  symbol       String
+  decimals     Int
+  tokenProgram String
+
+  user         User     @relation(fields: [telegramId], references: [telegramId])
 }
