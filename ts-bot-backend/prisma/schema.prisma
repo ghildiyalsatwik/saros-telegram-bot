@@ -34,4 +34,6 @@ model MintedToken {
   tokenProgram String
 
   user         User     @relation(fields: [telegramId], references: [telegramId])
+
+  @@unique([telegramId, name])
 }

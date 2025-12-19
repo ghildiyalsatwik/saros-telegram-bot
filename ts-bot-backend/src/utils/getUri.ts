@@ -4,5 +4,5 @@ export async function getUri(name: string, symbol: string, userId: number) {
 
     const IpfsHash = await setUri(name, symbol, userId);
 
-    return IpfsHash;
+    return `https://gateway.pinata.cloud/ipfs/${IpfsHash}`;
 }

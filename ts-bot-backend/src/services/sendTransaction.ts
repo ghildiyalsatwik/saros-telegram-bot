@@ -3,7 +3,7 @@ import { devnetConnection } from "../utils/connections.js";
 import { getPrivateKey } from "../db/getPrivateKey.js";
 import bs58 from "bs58";
 
-export async function sendSolTransferTransaction(userId: number, tx: Transaction) {
+export async function sendTransaction(userId: number, tx: Transaction) {
 
     const privateKey = await getPrivateKey(userId);
 

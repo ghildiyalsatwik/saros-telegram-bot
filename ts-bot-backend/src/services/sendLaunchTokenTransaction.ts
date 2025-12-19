@@ -9,7 +9,20 @@ export async function sendLaunchTokenTransaction(userId: number, tx: Transaction
 
     const signer = Keypair.fromSecretKey(bs58.decode(privateKey));
 
-    const sig = await sendAndConfirmTransaction(devnetConnection, tx, [signer, mintKeypair]);
+    let sig;
 
-    return sig;
+    let failed = false;
+
+    try {
+        
+        sig = await sendAndConfirmTransaction(devnetConnection, tx, [signer, mintKeypair]);
+
+    } catch(err) {
+
+        failed = true;
+
+        return {sig: null, failed};
+    }
+
+    return {sig, failed};
 }

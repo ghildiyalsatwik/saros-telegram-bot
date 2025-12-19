@@ -20,3 +20,33 @@ export async function createTokenInDb(telegramId: number, mintAddress: string, n
         }
     });
 }
+
+export async function getTokenByMintAddressAndUser(mintAddress: string, userId: number) {
+
+    const token = await prisma.mintedToken.findUnique({
+
+        where: {
+
+            mintAddress: mintAddress,
+            
+            telegramId: BigInt(userId)
+        }
+    
+    });
+
+    return token;
+}
+
+export async function getTokenByMintAddress(mintAddress: string) {
+
+    const token = await prisma.mintedToken.findUnique({
+
+        where: {
+
+            mintAddress: mintAddress
+        }
+    
+    });
+
+    return token;
+}

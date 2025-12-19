@@ -20,8 +20,14 @@ import { setLaunchTokenStateStep1, setLaunchTokenStateStep2, setLaunchTokenState
 import { buildLaunchTokenTransaction } from "../services/buildLaunchTokenTransaction.js";
 import { signLaunchTokenTransaction } from "../services/signLaunchTokenTransaction.js";
 import { sendLaunchTokenTransaction } from "../services/sendLaunchTokenTransaction.js";
-import { createTokenInDb } from "../db/token.js";
+import { createTokenInDb, getTokenByMintAddressAndUser } from "../db/token.js";
 import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+import { signTransaction } from "../services/signTransaction.js";
+import { setMintTokenStateStep1, setMintTokenStateStep2, setMintTokenStateStep3, setMintTokenStateStepComplete} from "./state/setMintTokenState.js";
+import { accountExists } from "../utils/accountExists.js";
+import { getUserPublicKey } from "../utils/getUserPublicKey.js";
+import { buildMintTokenTransaction } from "../services/buildMintTokenTransaction.js";
+import { sendTransaction } from "../services/sendTransaction.js";
 
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -213,6 +219,120 @@ bot.on(message("text"), async (ctx) => {
 
     }
 
+    if(session.action === "MINT_TOKENS") {
+
+        if(session.step === "1") {
+
+            const mintAddress = ctx.message.text;
+
+            const isValid = isValidSolanaAddress(mintAddress);
+
+            if(isValid === false) {
+
+                return ctx.reply(
+            
+                    "Please enter a valid Token mint address.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+            }
+
+            const pubkey = await getUserPublicKey(userId);
+
+            const exists = await accountExists(pubkey);
+
+            if(exists === false) {
+
+                return ctx.reply(
+            
+                    "This token mint address does not exist. Please enter a different mint address.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+            }
+
+            const token = await getTokenByMintAddressAndUser(mintAddress, userId);
+
+            if(!token) {
+
+                return ctx.reply(
+            
+                    "You have not launched this token. Please enter mint address for a token you have launched.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+            }
+
+            const decimals = token.decimals;
+
+            await setMintTokenStateStep2(userId, mintAddress, decimals.toString());
+
+            return ctx.reply(
+            
+                "Mint address received. Please enter  address of recipient.",
+        
+                { parse_mode: "Markdown", ...getBackHomeKeyboard}
+            );
+
+        }
+
+        if(session.step === "2") {
+
+            const recipient = ctx.message.text;
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const isValid = isValidSolanaAddress(parsedParams.mintAddress);
+
+            if(isValid === false) {
+
+                return ctx.reply(
+            
+                    "Please enter a valid Token mint address.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+            }
+
+            await setMintTokenStateStep3(userId, parsedParams.mintAddress, parsedParams.decimals, recipient);
+
+            return ctx.reply(
+            
+                "Recipient address received. Please enter the amount of tokens you want to mint.",
+        
+                { parse_mode: "Markdown", ...getBackHomeKeyboard}
+            );
+
+        }
+
+        if(session.step === "3") {
+
+            const amount = ctx.message.text;
+
+            if(isAmountValid(amount) === false) {
+
+                return ctx.reply(
+            
+                    "Please enter a valid token transfer amount.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+            }
+
+            const parsedParams =  JSON.parse(session.params!);
+
+            await setMintTokenStateStepComplete(userId, parsedParams.mintAddress, parsedParams.decimals, parsedParams.to, amount);
+
+            return ctx.reply(
+            
+                "Token transfer amount received. Press execute to confirm transaction.",
+        
+                { parse_mode: "Markdown", ...executeTransactionKeyboard}
+            );
+        }
+
+    }
+
 });
 
 bot.action("CREATE_WALLET", async (ctx) => {
@@ -321,6 +441,24 @@ bot.action("SOL_BALANCE", async (ctx) => {
 
 });
 
+bot.action("MINT_TOKENS", async (ctx) => {
+
+    await ctx.answerCbQuery("Preparing token mint transaction.");
+
+    const userId = ctx.from.id;
+
+    await setMintTokenStateStep1(userId);
+
+    return ctx.reply(
+        
+        "Please enter mint address of the token.",
+
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
+
+
+});
+
 bot.action("EXECUTE", async(ctx) => {
 
     await ctx.answerCbQuery("Confirming your transaction...");
@@ -343,7 +481,19 @@ bot.action("EXECUTE", async(ctx) => {
 
         const txSigned = await signSolTransferTransaction(userId, tx);
 
-        const sig = await sendSolTransferTransaction(userId, txSigned);
+        const { sig, failed } = await sendSolTransferTransaction(userId, txSigned);
+
+        if(failed === true) {
+
+            await setHomeState(userId);
+
+            return ctx.reply(
+        
+                `Your transaction failed. Please try again.`,
+        
+                { parse_mode: "Markdown", ...homeKeyboard}
+            );
+        }
 
         await setHomeState(userId);
 
@@ -375,7 +525,19 @@ bot.action("EXECUTE", async(ctx) => {
 
         const txSigned = await signLaunchTokenTransaction(tx, mintKeypair, userId);
 
-        const sig = await sendLaunchTokenTransaction(userId, txSigned, mintKeypair);
+        const {sig, failed} = await sendLaunchTokenTransaction(userId, txSigned, mintKeypair);
+
+        if(failed === true) {
+
+            await setHomeState(userId);
+
+            return ctx.reply(
+        
+                `Your transaction failed. Please try again.`,
+        
+                { parse_mode: "Markdown", ...homeKeyboard}
+            );
+        }
 
         await createTokenInDb(userId, mintAddress, name, ticker, decimals, TOKEN_2022_PROGRAM_ID.toBase58());
 
@@ -388,6 +550,50 @@ bot.action("EXECUTE", async(ctx) => {
             { parse_mode: "Markdown", ...homeKeyboard}
         );
 
+    }
+
+    if(session!.action! === "MINT_TOKENS") {
+
+        const userId = ctx.from.id;
+
+        const parsedParams = JSON.parse(session?.params!);
+
+        const mintAddress = parsedParams.mintAddress;
+
+        const to = parsedParams.to;
+
+        const amount = parsedParams.amount;
+
+        const decimals = parsedParams.decimals;
+
+        const pubkey = session?.publicKey!;
+
+        const tx = await buildMintTokenTransaction(pubkey, mintAddress, to, parseFloat(amount), parseInt(decimals));
+
+        const signedTx = await signTransaction(userId, tx);
+
+        const {sig, failed} = await sendTransaction(userId, signedTx);
+
+        if(failed === true) {
+
+            await setHomeState(userId);
+
+            return ctx.reply(
+        
+                `Your transaction failed. Please try again.`,
+        
+                { parse_mode: "Markdown", ...homeKeyboard}
+            );
+        }
+
+        await setHomeState(userId);
+
+        return ctx.reply(
+        
+            `Your transaction is confirmed!\n${amount} ${mintAddress} have been minted to: ${to}.\nTransaction Signature: ${sig}`,
+    
+            { parse_mode: "Markdown", ...homeKeyboard}
+        );
     }
 
 });
