@@ -1,4 +1,4 @@
-import { Keypair, PublicKey, sendAndConfirmTransaction } from "@solana/web3.js";
+import { Keypair, sendAndConfirmTransaction } from "@solana/web3.js";
 import bs58 from "bs58";
 import { beforeAll, describe, it } from "vitest";
 import { buildCreatePoolTransaction } from "../services/createPoolTransaction.js";
@@ -20,7 +20,7 @@ describe("Testing create pool", () => {
 
     it("testing create pool", async () => {
 
-        const tx = await buildCreatePoolTransaction(
+        const res = await buildCreatePoolTransaction(
 
             "56pNF8HPNCppa5uW34zRyMBQdVdY68SNuhVM5TfVdn2d",
 
@@ -37,6 +37,8 @@ describe("Testing create pool", () => {
             pubkey
 
         );
+
+        const tx = res.transaction;
 
         let sig;
 
