@@ -20,7 +20,8 @@ model User {
   publicKey   String
   encryptedPrivateKey  String
 
-  MintedTokens        MintedToken[]
+  MintedTokens        MintedToken[] @relation("UserLaunchedTokens")
+  CreatedPools        CreatedPool[] @relation("UserCreatedPools")
 
 }
 
@@ -33,7 +34,25 @@ model MintedToken {
   decimals     Int
   tokenProgram String
 
-  user         User     @relation(fields: [telegramId], references: [telegramId])
+  user         User     @relation("UserLaunchedTokens", fields: [telegramId], references: [telegramId])
 
   @@unique([telegramId, name])
+}
+
+model CreatedPool {
+  id              String   @id @default(cuid())
+  telegramId      BigInt
+  pairAddress     String   @unique
+  tokenX          String
+  tokenXDecimals  Int
+  tokenY          String
+  tokenYDecimals  Int
+  activeBin       Int
+  binStep         Int
+  binArrayLower   String
+  binArrayUpper   String
+  hooksConfig     String
+  ratePrice       Int?
+
+  user            User     @relation("UserCreatedPools", fields: [telegramId], references: [telegramId])
 }

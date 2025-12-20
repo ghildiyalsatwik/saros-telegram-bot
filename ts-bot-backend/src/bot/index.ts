@@ -28,6 +28,10 @@ import { accountExists } from "../utils/accountExists.js";
 import { getUserPublicKey } from "../utils/getUserPublicKey.js";
 import { buildMintTokenTransaction } from "../services/buildMintTokenTransaction.js";
 import { sendTransaction } from "../services/sendTransaction.js";
+import { setCreatePoolStateStep1, setCreatePoolStateStep2, setCreatePoolStateStep3, setCreatePoolStateStep4, setCreatePoolStateComplete } from "./state/setCreatePoolState.js";
+import { getTokenDecimals } from "../utils/getTokenDecimals.js";
+import { buildCreatePoolTransaction } from "../services/createPoolTransaction.js";
+import { createPoolInDb } from "../db/pool.js";
 
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -333,6 +337,142 @@ bot.on(message("text"), async (ctx) => {
 
     }
 
+    if(session.action === "CREATE_POOL") {
+
+        if(session.step === "1") {
+
+            const mintAddress1 = ctx.message.text;
+
+            const isValid = isValidSolanaAddress(mintAddress1);
+
+            if(isValid === false) {
+
+                return ctx.reply(
+            
+                    "Please enter a valid Token mint address.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+            }
+
+            const decimals = await getTokenDecimals(mintAddress1);
+
+            await setCreatePoolStateStep2(userId, mintAddress1, decimals.toString());
+
+            return ctx.reply(
+            
+                "Mint address of first token received. Please enter mint address of the second token of the pair.",
+        
+                { parse_mode: "Markdown", ...getBackHomeKeyboard}
+            );
+        }
+
+        if(session.step === "2") {
+
+            const mintAddress2 = ctx.message.text;
+
+            const isValid = isValidSolanaAddress(mintAddress2);
+
+            if(isValid === false) {
+
+                return ctx.reply(
+            
+                    "Please enter a valid Token mint address.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+            }
+
+            const decimals2 = await getTokenDecimals(mintAddress2);
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const mintAddress1 = parsedParams.mintAddress1;
+
+            const decimals1 = parsedParams.decimals1;
+
+            await setCreatePoolStateStep3(userId, mintAddress1, decimals1, mintAddress2, decimals2.toString());
+
+            return ctx.reply(
+            
+                "Mint address of the second token received. Please enter the rate price.",
+        
+                { parse_mode: "Markdown", ...getBackHomeKeyboard}
+            );
+        }
+
+        if(session.step === "3") {
+
+            const ratePrice = ctx.message.text;
+
+            if(isAmountValid(ratePrice) === false) {
+
+                return ctx.reply(
+            
+                    "Please enter a valid rate price.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+            }
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const mintAddress1 = parsedParams.mintAddress1;
+
+            const decimals1 = parsedParams.decimals1;
+
+            const mintAddress2 = parsedParams.mintAddress2;
+
+            const decimals2 = parsedParams.decimals2;
+
+            await setCreatePoolStateStep4(userId, mintAddress1, decimals1, mintAddress2, decimals2, ratePrice);
+
+            return ctx.reply(
+            
+                "Rate price received. Please enter the bin step.",
+        
+                { parse_mode: "Markdown", ...getBackHomeKeyboard}
+            );
+        }
+
+        if(session.step === "4") {
+
+            const binStep = ctx.message.text;
+
+            if(isAmountValid(binStep) === false) {
+
+                return ctx.reply(
+            
+                    "Please enter a valid rate price.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+            }
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const mintAddress1 = parsedParams.mintAddress1;
+
+            const decimals1 = parsedParams.decimals1;
+
+            const mintAddress2 = parsedParams.mintAddress2;
+
+            const decimals2 = parsedParams.decimals2;
+
+            const ratePrice = parsedParams.ratePrice;
+
+            await setCreatePoolStateComplete(userId, mintAddress1, decimals1, mintAddress2, decimals2, ratePrice, binStep);
+
+            return ctx.reply(
+            
+                "Bin step received. Press execute to confirm transaction.",
+        
+                { parse_mode: "Markdown", ...executeTransactionKeyboard}
+            );
+
+        }
+    }
+
 });
 
 bot.action("CREATE_WALLET", async (ctx) => {
@@ -456,6 +596,22 @@ bot.action("MINT_TOKENS", async (ctx) => {
         { parse_mode: "Markdown", ...getBackHomeKeyboard}
     );
 
+});
+
+bot.action("CREATE_POOL", async (ctx) => {
+
+    await ctx.answerCbQuery("Preparing Create Pool transaction...");
+
+    const userId = ctx.from.id;
+
+    await setCreatePoolStateStep1(userId);
+
+    return ctx.reply(
+        
+        "Please enter the mint address of the first token of the pair.",
+
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
 
 });
 
@@ -591,6 +747,65 @@ bot.action("EXECUTE", async(ctx) => {
         return ctx.reply(
         
             `Your transaction is confirmed!\n${amount} ${mintAddress} have been minted to: ${to}.\nTransaction Signature: ${sig}`,
+    
+            { parse_mode: "Markdown", ...homeKeyboard}
+        );
+    }
+
+
+    if(session!.action === "CREATE_POOL") {
+
+        const userId = ctx.from.id;
+
+        const parsedParams = JSON.parse(session?.params!);
+
+        const mintAddress1 = parsedParams.mintAddress1;
+
+        const decimals1 = parsedParams.decimals1;
+
+        const mintAddress2 = parsedParams.mintAddress2;
+
+        const decimals2 = parsedParams.decimals2;
+
+        const ratePrice = parsedParams.ratePrice;
+
+        const binStep = parsedParams.binStep;
+
+        const pubkey = session?.publicKey!;
+
+        const { transaction, pair, activeBin, binArrayLower, binArrayUpper, hooksConfig } = await buildCreatePoolTransaction(mintAddress1, parseInt(decimals1), mintAddress2, parseInt(decimals2), parseInt(binStep), parseInt(ratePrice), pubkey);
+
+        const signedTx = await signTransaction(userId, transaction);
+
+        const {sig, failed} = await sendTransaction(userId, signedTx);
+
+        if(failed === true) {
+
+            await setHomeState(userId);
+
+            return ctx.reply(
+        
+                `Your transaction failed. Please try again.`,
+        
+                { parse_mode: "Markdown", ...homeKeyboard}
+            );
+        }
+
+        const pairPubKey = pair.toBase58();
+
+        const binArrayLowerPubKey = binArrayLower.toBase58();
+
+        const binArrayUpperPubKey = binArrayUpper.toBase58();
+
+        const hooksConfigPubKey = hooksConfig.toBase58();
+
+        await createPoolInDb({userId, pair: pairPubKey, tokenX: mintAddress1, tokenXDecimals: decimals1, tokenY: mintAddress2, tokenYDecimals: decimals2, activeBin, binStep, binArrayLower: binArrayLowerPubKey, binArrayUpper: binArrayUpperPubKey, hooksConfig: hooksConfigPubKey, ratePrice});
+
+        await setHomeState(userId);
+
+        return ctx.reply(
+        
+            `Your transaction is confirmed!\nPool created at ${pairPubKey}.\nTransaction Signature: ${sig}.`,
     
             { parse_mode: "Markdown", ...homeKeyboard}
         );
