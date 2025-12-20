@@ -39,9 +39,11 @@ import { isValidUpperBin } from "../utils/isValidUpperBin.js";
 import { buildCreatePositionTransaction } from "../services/buildCreatePositionTransaction.js";
 import { createPositionInDb, getPairFromPositionMint } from "../db/position.js";
 import { setAddLiquidityStateStep1, setAddLiquidityStateStep2, setAddLiquidityStateStep3, setAddLiquidityStateStep4, setAddLiquidityStateComplete } from "./state/setAddLiquidityState.js";
-import { getPositionByPositionAddress } from "../db/position.js";
+import { getPositionByPositionAddress, getPositionByUserAndPositionMint, deletePositionFromDb } from "../db/position.js";
 import { getTokenDecimalsFromPositionMint } from "../utils/getTokenDecimalsFromPositionMint.js";
 import { buildAddLiquidityTransaction } from "../services/buildAddLiquidityTransaction.js";
+import { setClosePositionStateStep1, setClosePositionStateComplete } from "./state/setClosePositionState.js";
+import { buildClosePositionTransactions } from "../services/buildClosePositionTransactions.js";
 
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -714,6 +716,49 @@ bot.on(message("text"), async (ctx) => {
         }
     }
 
+    if(session.action === "CLOSE_POSITION") {
+
+        if(session.step === "1") {
+
+            const positionMint = ctx.message.text;
+
+            if(!isValidSolanaAddress(positionMint)) {
+
+                return ctx.reply(
+            
+                    "Please enter a valid Solana address.",
+    
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+            }
+
+            const position = await getPositionByUserAndPositionMint(userId, positionMint);
+
+            if(!position) {
+
+                return ctx.reply(
+            
+                    "You do not have any such position. Please enter a position that you own.",
+    
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+
+            }
+
+            const pair = position.pairAddress;
+
+            await setClosePositionStateComplete(userId, positionMint, pair);
+
+            return ctx.reply(
+            
+                "Position mint address received. Press execute to confirm the transaction.",
+        
+                { parse_mode: "Markdown", ...executeTransactionKeyboard}
+            );
+
+        }
+    }
+
 });
 
 bot.action("CREATE_WALLET", async (ctx) => {
@@ -975,6 +1020,20 @@ bot.action("CREATE_POSITION", async (ctx) => {
         { parse_mode: "Markdown", ...getBackHomeKeyboard}
     );
 
+});
+
+bot.action("CLOSE_POSITION", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    await ctx.answerCbQuery("Preparing to close position...");
+
+    await setClosePositionStateStep1(userId);
+
+    ctx.reply("Please enter the position mint that you want to close.",
+
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
 });
 
 bot.action("EXECUTE", async(ctx) => {
@@ -1259,6 +1318,104 @@ bot.action("EXECUTE", async(ctx) => {
         return ctx.reply(
         
             `Your transaction is confirmed!\Liquidity has been added to: ${positionMint}.\nTransaction Signature: ${sig}.`,
+    
+            { parse_mode: "Markdown", ...homeKeyboard}
+        );
+
+    }
+
+    if(session?.action === "CLOSE_POSITION") {
+
+        const parsedParams = JSON.parse(session.params!);
+
+        const positionMint = parsedParams.positionMint;
+
+        const pubkey = session.publicKey!;
+
+        const pair = parsedParams.pair;
+
+        const { setUpTransaction, transactions, cleanUpTransaction } = await buildClosePositionTransactions(
+
+            positionMint,
+
+            pubkey,
+
+            pair
+        );
+
+        if(setUpTransaction) {
+
+            const setUpTransactionSigned = await signTransaction(userId, setUpTransaction);
+
+            const {sig, failed} = await sendTransaction(userId, setUpTransactionSigned);
+
+            if(failed === true) {
+
+                await setHomeState(userId);
+
+                return ctx.reply(
+            
+                    `Your transaction failed. Please try again.`,
+            
+                    { parse_mode: "Markdown", ...homeKeyboard}
+                );
+            }
+
+            console.log(`Set up transaction succeeded\nTransaction Hash: ${sig}`);
+
+        }
+
+        let idx = 0;
+
+        for(const tx of transactions) {
+
+            const signedTx = await signTransaction(userId, tx);
+
+            const {sig, failed} = await sendTransaction(userId, signedTx);
+
+            if(failed === true) {
+
+                await setHomeState(userId);
+
+                return ctx.reply(
+            
+                    `Your transaction failed. Please try again.`,
+            
+                    { parse_mode: "Markdown", ...homeKeyboard}
+                );
+            }
+
+            console.log(`Transaction number: ${idx} succeeded.\nTransaction Hash: ${sig}`);
+        }
+
+        if(cleanUpTransaction) {
+
+            const signedCleanUpTx = await signTransaction(userId, cleanUpTransaction);
+
+            const {sig, failed} = await sendTransaction(userId, signedCleanUpTx);
+
+            if(failed === true) {
+
+                await setHomeState(userId);
+
+                return ctx.reply(
+            
+                    `Your transaction failed. Please try again.`,
+            
+                    { parse_mode: "Markdown", ...homeKeyboard}
+                );
+            }
+
+            console.log(`Clean up transaction succeeded.\nTransaction Hash: ${sig}`);
+        }
+
+        await deletePositionFromDb(userId, positionMint);
+
+        await setHomeState(userId);
+
+        return ctx.reply(
+        
+            `Your transaction is confirmed!\Position: ${positionMint} has been closed.`,
     
             { parse_mode: "Markdown", ...homeKeyboard}
         );

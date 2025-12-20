@@ -46,3 +46,31 @@ export async function getPairFromPositionMint(positionMint: string) {
 
     return position?.pairAddress!;
 }
+
+export async function getPositionByUserAndPositionMint(userId: number, positionMint: string) {
+
+    const position = await prisma.createdPosition.findUnique({
+
+        where: {
+
+            telegramId: BigInt(userId),
+
+            positionMint: positionMint
+        }
+    });
+
+    return position;
+}
+
+export async function deletePositionFromDb(userId: number, positionMint: string) {
+
+    await prisma.createdPosition.delete({
+
+        where: {
+
+            positionMint: positionMint,
+
+            telegramId: BigInt(userId)
+        }
+    })
+}

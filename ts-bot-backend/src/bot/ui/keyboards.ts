@@ -8,7 +8,8 @@ export const createWalletKeyboard = Markup.inlineKeyboard([
 
 export const homeKeyboard = Markup.inlineKeyboard([
 
-    [   Markup.button.callback("Show Address", "SHOW_ADDRESS"),
+    [   
+        Markup.button.callback("Show Address", "SHOW_ADDRESS"),
 
         Markup.button.callback("Transfer SOL", "TRANSFER_SOL"),
 
@@ -44,15 +45,19 @@ export const homeKeyboard = Markup.inlineKeyboard([
     ],
 
     [
-        Markup.button.callback("Create Saros DLMM Pool", "CREATE_POOL")
+        Markup.button.callback("Create DLMM Pool", "CREATE_POOL")
     ],
 
     [
-        Markup.button.callback("Create Saros DLMM Pool Position", "CREATE_POSITION"),
+        Markup.button.callback("Create DLMM Position", "CREATE_POSITION"),
+
+        Markup.button.callback("Close DLMM Position", "CLOSE_POSITION"),
     ],
 
     [
-        Markup.button.callback("Add liquidity into DLMM Position", "ADD_LIQUIDITY")
+        Markup.button.callback("Add liquidity DLMM", "ADD_LIQUIDITY"),
+
+        Markup.button.callback("Remove liquidity DLMM", "REMOVE_LIQUIDITY")
     ]
 
 ]);
