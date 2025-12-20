@@ -48,7 +48,11 @@ export const homeKeyboard = Markup.inlineKeyboard([
     ],
 
     [
-        Markup.button.callback("Create Saros DLMM Pool Position", "CREATE_POSITION")
+        Markup.button.callback("Create Saros DLMM Pool Position", "CREATE_POSITION"),
+    ],
+
+    [
+        Markup.button.callback("Add liquidity into DLMM Position", "ADD_LIQUIDITY")
     ]
 
 ]);
@@ -62,6 +66,21 @@ export const executeTransactionKeyboard = Markup.inlineKeyboard([
 
     [   Markup.button.callback("Execute Transaction", "EXECUTE"),
 
+        Markup.button.callback("Go back Home", "HOME")
+    ]
+]);
+
+export const liquidityShapesKeyboard = Markup.inlineKeyboard([
+
+    [   
+        Markup.button.callback("SPOT", "SPOT"),
+
+        Markup.button.callback("CURVE", "CURVE"),
+
+        Markup.button.callback("BID-ASK", "BIDASK")
+    ],
+
+    [
         Markup.button.callback("Go back Home", "HOME")
     ]
 ]);

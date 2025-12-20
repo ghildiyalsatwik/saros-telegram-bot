@@ -6,7 +6,7 @@ import { initSession } from "./state/initSession.js";
 import { getSession } from "./state/getSession.js";
 import { getDefaultMessage } from "./ui/defaultMessage.js";
 import { createUserWallet } from "../services/createWallet.js";
-import { homeKeyboard, createWalletKeyboard, getBackHomeKeyboard, executeTransactionKeyboard } from "./ui/keyboards.js";
+import { homeKeyboard, createWalletKeyboard, getBackHomeKeyboard, executeTransactionKeyboard, liquidityShapesKeyboard } from "./ui/keyboards.js";
 import { setSolTransferStateAddress, setSolTransferStateAmount, setSolTransferComplete } from "./state/solTransferState.js";
 import { setHomeState } from "./state/setHomeState.js";
 import { isValidSolanaAddress } from "../utils/validSolanaAddress.js";
@@ -37,7 +37,11 @@ import { poolExists } from "../utils/poolExists.js";
 import { isValidLowerBin } from "../utils/isValidLowerBin.js";
 import { isValidUpperBin } from "../utils/isValidUpperBin.js";
 import { buildCreatePositionTransaction } from "../services/buildCreatePositionTransaction.js";
-import { createPositionInDb } from "../db/position.js";
+import { createPositionInDb, getPairFromPositionMint } from "../db/position.js";
+import { setAddLiquidityStateStep1, setAddLiquidityStateStep2, setAddLiquidityStateStep3, setAddLiquidityStateStep4, setAddLiquidityStateComplete } from "./state/setAddLiquidityState.js";
+import { getPositionByPositionAddress } from "../db/position.js";
+import { getTokenDecimalsFromPositionMint } from "../utils/getTokenDecimalsFromPositionMint.js";
+import { buildAddLiquidityTransaction } from "../services/buildAddLiquidityTransaction.js";
 
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -589,6 +593,129 @@ bot.on(message("text"), async (ctx) => {
 
     }
 
+    if(session.action === "ADD_LIQUIDITY") {
+
+        if(session.step === "1") {
+
+            const positionMint = ctx.message.text;
+
+            const isValid = isValidSolanaAddress(positionMint);
+
+            if(!isValid) {
+
+                return ctx.reply(
+            
+                    "Please enter a valid Solana address.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+
+            }
+
+            const position = await getPositionByPositionAddress(positionMint);
+
+            if(!position) {
+
+                return ctx.reply(
+            
+                    "You do not have any such position. Please enter a valid position.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+
+            }
+
+            const lower = position.lowerBin.toString();
+
+            const upper = position.upperBin.toString();
+
+            await setAddLiquidityStateStep2(userId, positionMint, lower, upper);
+
+            return ctx.reply(
+            
+                "Position mint address received. Please enter amount of the first token.",
+        
+                //{ parse_mode: "Markdown", ...liquidityShapesKeyboard}
+
+                { parse_mode: "Markdown", ...getBackHomeKeyboard}
+            );
+
+        }
+
+        if(session.step === "2") {
+
+            const amountX = ctx.message.text;
+
+            const isValid = isAmountValid(amountX);
+
+            if(!isValid) {
+
+                return ctx.reply(
+            
+                    "Position enter a valid amount.",
+    
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+            }
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const positionMint = parsedParams.positionMint;
+
+            const lower = parsedParams.lower;
+
+            const upper = parsedParams.upper;
+
+            await setAddLiquidityStateStep3(userId, positionMint, lower, upper, amountX);
+
+            return ctx.reply(
+            
+                "Amount of the first token received. Please enter amount of the second token.",
+
+                { parse_mode: "Markdown", ...getBackHomeKeyboard}
+            );
+
+        }
+
+
+        if(session.step === "3") {
+
+            const amountY = ctx.message.text;
+
+            const isValid = isAmountValid(amountY);
+
+            if(!isValid) {
+
+                return ctx.reply(
+            
+                    "Position enter a valid amount.",
+    
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+            }
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const positionMint = parsedParams.positionMint;
+
+            const lower = parsedParams.lower;
+
+            const upper = parsedParams.upper;
+
+            const amountX = parsedParams.amountX;
+
+            await setAddLiquidityStateStep4(userId, positionMint, lower, upper, amountX, amountY);
+
+            return ctx.reply(
+            
+                "Amount of the second token received. Please choose liquidity shape.",
+        
+                { parse_mode: "Markdown", ...liquidityShapesKeyboard}
+            );
+
+        }
+    }
+
 });
 
 bot.action("CREATE_WALLET", async (ctx) => {
@@ -710,6 +837,110 @@ bot.action("MINT_TOKENS", async (ctx) => {
         "Please enter mint address of the token.",
 
         { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
+
+});
+
+bot.action("ADD_LIQUIDITY", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    await ctx.answerCbQuery("Preparing to add liquidity.");
+
+    await setAddLiquidityStateStep1(userId);
+
+    return ctx.reply(
+        
+        "Please enter the position mint address of the position.",
+
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
+
+});
+
+bot.action("SPOT", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    const session = await getSession(userId);
+
+    const parsedParams = JSON.parse(session?.params!);
+
+    const positionMint = parsedParams.positionMint;
+
+    const lower = parsedParams.lower;
+
+    const upper = parsedParams.upper;
+
+    const amountX = parsedParams.amountX;
+
+    const amountY = parsedParams.amountY;
+
+    await setAddLiquidityStateComplete(userId, positionMint, lower, upper, amountX, amountY, "SPOT");
+
+    return ctx.reply(
+            
+        "Liquidity shape received. Press execute to confirm transaction.",
+
+        { parse_mode: "Markdown", ...executeTransactionKeyboard}
+    );
+
+});
+
+bot.action("CURVE", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    const session = await getSession(userId);
+
+    const parsedParams = JSON.parse(session?.params!);
+
+    const positionMint = parsedParams.positionMint;
+
+    const lower = parsedParams.lower;
+
+    const upper = parsedParams.upper;
+
+    const amountX = parsedParams.amountX;
+
+    const amountY = parsedParams.amountY;
+
+    await setAddLiquidityStateComplete(userId, positionMint, lower, upper, amountX, amountY, "CURVE");
+
+    return ctx.reply(
+            
+        "Liquidity shape received. Press execute to confirm transaction.",
+
+        { parse_mode: "Markdown", ...executeTransactionKeyboard}
+    );
+
+});
+
+bot.action("BIDASK", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    const session = await getSession(userId);
+
+    const parsedParams = JSON.parse(session?.params!);
+
+    const positionMint = parsedParams.positionMint;
+
+    const lower = parsedParams.lower;
+
+    const upper = parsedParams.upper;
+
+    const amountX = parsedParams.amountX;
+
+    const amountY = parsedParams.amountY;
+
+    await setAddLiquidityStateComplete(userId, positionMint, lower, upper, amountX, amountY, "BIDASK");
+
+    return ctx.reply(
+            
+        "Liquidity shape received. Press execute to confirm transaction.",
+
+        { parse_mode: "Markdown", ...executeTransactionKeyboard}
     );
 
 });
@@ -979,6 +1210,57 @@ bot.action("EXECUTE", async(ctx) => {
         return ctx.reply(
         
             `Your transaction is confirmed!\nPosition created at ${positionMintPubKey}.\nTransaction Signature: ${sig}.`,
+    
+            { parse_mode: "Markdown", ...homeKeyboard}
+        );
+
+    }
+
+    if(session!.action === "ADD_LIQUIDITY") {
+
+        const parsedParams = JSON.parse(session!.params!);
+
+        const positionMint = parsedParams.positionMint;
+
+        const lower = parsedParams.lower;
+
+        const upper = parsedParams.upper;
+
+        const shape = parsedParams.shape;
+
+        const amountX = parsedParams.amountX;
+
+        const amountY = parsedParams.amountY;
+
+        const pubkey = session?.publicKey!;
+
+        const { decimalsX, decimalsY } = await getTokenDecimalsFromPositionMint(positionMint);
+
+        const pair = await getPairFromPositionMint(positionMint);
+
+        const tx = await buildAddLiquidityTransaction(pair, pubkey, positionMint, parseInt(lower), parseInt(upper), shape, parseFloat(amountX), decimalsX, parseFloat(amountY), decimalsY);
+
+        const signedTx = await signTransaction(userId, tx);
+
+        const {sig, failed} = await sendTransaction(userId, signedTx);
+
+        if(failed === true) {
+
+            await setHomeState(userId);
+
+            return ctx.reply(
+        
+                `Your transaction failed. Please try again.`,
+        
+                { parse_mode: "Markdown", ...homeKeyboard}
+            );
+        }
+
+        await setHomeState(userId);
+
+        return ctx.reply(
+        
+            `Your transaction is confirmed!\Liquidity has been added to: ${positionMint}.\nTransaction Signature: ${sig}.`,
     
             { parse_mode: "Markdown", ...homeKeyboard}
         );

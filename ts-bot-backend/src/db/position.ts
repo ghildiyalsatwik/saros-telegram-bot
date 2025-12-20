@@ -18,3 +18,31 @@ export async function createPositionInDb(userId: number, pair: string, positionM
         }
     });
 }
+
+export async function getPositionByPositionAddress(positionMint: string) {
+
+    const position = await prisma.createdPosition.findUnique({
+
+        where: {
+
+            positionMint: positionMint
+        }
+    
+    });
+
+    return position;
+}
+
+export async function getPairFromPositionMint(positionMint: string) {
+
+    const position = await prisma.createdPosition.findUnique({
+
+        where: {
+
+            positionMint: positionMint
+        }
+    
+    });
+
+    return position?.pairAddress!;
+}
