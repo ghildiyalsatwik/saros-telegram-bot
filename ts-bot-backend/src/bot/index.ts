@@ -1623,8 +1623,6 @@ bot.action("EXECUTE", async(ctx) => {
             console.log(`Clean up transaction succeeded.\nTransaction Hash: ${sig}`);
         }
 
-        await deletePositionFromDb(userId, positionMint);
-
         await setHomeState(userId);
 
         return ctx.reply(
