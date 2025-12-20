@@ -634,8 +634,6 @@ bot.on(message("text"), async (ctx) => {
             return ctx.reply(
             
                 "Position mint address received. Please enter amount of the first token.",
-        
-                //{ parse_mode: "Markdown", ...liquidityShapesKeyboard}
 
                 { parse_mode: "Markdown", ...getBackHomeKeyboard}
             );

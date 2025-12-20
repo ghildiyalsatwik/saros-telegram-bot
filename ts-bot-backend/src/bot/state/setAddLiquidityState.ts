@@ -67,7 +67,7 @@ export async function setAddLiquidityStateStep4(userId: number, positionMint: st
 
             amountX: amountX,
 
-            amountY
+            amountY: amountY
         })
     
     });
