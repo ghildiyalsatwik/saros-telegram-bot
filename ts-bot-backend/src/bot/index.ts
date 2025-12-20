@@ -32,6 +32,12 @@ import { setCreatePoolStateStep1, setCreatePoolStateStep2, setCreatePoolStateSte
 import { getTokenDecimals } from "../utils/getTokenDecimals.js";
 import { buildCreatePoolTransaction } from "../services/createPoolTransaction.js";
 import { createPoolInDb } from "../db/pool.js";
+import { setCreatePositionStateStep1, setCreatePositionStateStep2, setCreatePositionStateStep3, setCreatePositionStateComplete } from "./state/setCreatePositionState.js";
+import { poolExists } from "../utils/poolExists.js";
+import { isValidLowerBin } from "../utils/isValidLowerBin.js";
+import { isValidUpperBin } from "../utils/isValidUpperBin.js";
+import { buildCreatePositionTransaction } from "../services/buildCreatePositionTransaction.js";
+import { createPositionInDb } from "../db/position.js";
 
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -473,6 +479,116 @@ bot.on(message("text"), async (ctx) => {
         }
     }
 
+    if(session.action === "CREATE_POSITION") {
+
+        if(session.step === "1") {
+
+            const pair = ctx.message.text;
+
+            const isValid = isValidSolanaAddress(pair);
+
+            if(isValid === false) {
+
+                return ctx.reply(
+            
+                    "Please enter a valid pool address.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+            }
+
+            const poolExist = await poolExists(pair);
+
+            if(poolExist === false) {
+
+                return ctx.reply(
+            
+                    "No such Saros DLMM pool exists!. Please enter a different one.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+
+            }
+
+            await setCreatePositionStateStep2(userId, pair);
+
+            return ctx.reply(
+            
+                "Pool address received. Please enter the lower end of bin range.",
+        
+                { parse_mode: "Markdown", ...getBackHomeKeyboard}
+            );
+        }
+
+        if(session.step === "2") {
+
+            const lower = ctx.message.text;
+
+            const valid = isValidLowerBin(lower);
+
+            if(valid === false) {
+
+                return ctx.reply(
+            
+                    "This lower bin is invalid. Please enter a value less than or equal to zero.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+
+            }
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const pair = parsedParams.pair;
+
+            await setCreatePositionStateStep3(userId, pair, lower);
+
+            return ctx.reply(
+            
+                "Lower bin received. Please enter the upper end of the bin range.",
+        
+                { parse_mode: "Markdown", ...getBackHomeKeyboard}
+            );
+
+        }
+
+
+        if(session.step === "3") {
+
+            const upper = ctx.message.text;
+
+            const valid = isValidUpperBin(upper);
+
+            if(valid === false) {
+
+                return ctx.reply(
+            
+                    "This upper bin is invalid. Please enter a value greater than or equal to zero.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+
+            }
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const pair = parsedParams.pair;
+
+            const lower = parsedParams.lower;
+
+            await setCreatePositionStateComplete(userId, pair, lower, upper);
+
+            return ctx.reply(
+            
+                "Upper bin received. Press execute to confirm the transaction.",
+        
+                { parse_mode: "Markdown", ...executeTransactionKeyboard}
+            );
+
+        }
+
+    }
+
 });
 
 bot.action("CREATE_WALLET", async (ctx) => {
@@ -609,6 +725,23 @@ bot.action("CREATE_POOL", async (ctx) => {
     return ctx.reply(
         
         "Please enter the mint address of the first token of the pair.",
+
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
+
+});
+
+bot.action("CREATE_POSITION", async (ctx) => {
+
+    await ctx.answerCbQuery("Preparing Create Position transaction...");
+
+    const userId = ctx.from.id;
+
+    await setCreatePositionStateStep1(userId);
+
+    return ctx.reply(
+        
+        "Please enter the pool address on which you want to open a position.",
 
         { parse_mode: "Markdown", ...getBackHomeKeyboard}
     );
@@ -809,6 +942,47 @@ bot.action("EXECUTE", async(ctx) => {
     
             { parse_mode: "Markdown", ...homeKeyboard}
         );
+    }
+
+    if(session?.action! === "CREATE_POSITION") {
+
+        const parsedParams = JSON.parse(session!.params!);
+
+        const pair = parsedParams.pair;
+
+        const lower = parsedParams.lower;
+
+        const upper = parsedParams.upper;
+
+        const {tx, positionMintPubKey} = await buildCreatePositionTransaction(userId, pair, lower, upper);
+
+        const signedTx = await signTransaction(userId, tx);
+
+        const {sig, failed} = await sendTransaction(userId, signedTx);
+
+        if(failed === true) {
+
+            await setHomeState(userId);
+
+            return ctx.reply(
+        
+                `Your transaction failed. Please try again.`,
+        
+                { parse_mode: "Markdown", ...homeKeyboard}
+            );
+        }
+
+        await setHomeState(userId);
+
+        await createPositionInDb(userId, pair, positionMintPubKey, lower, upper);
+
+        return ctx.reply(
+        
+            `Your transaction is confirmed!\nPosition created at ${positionMintPubKey}.\nTransaction Signature: ${sig}.`,
+    
+            { parse_mode: "Markdown", ...homeKeyboard}
+        );
+
     }
 
 });

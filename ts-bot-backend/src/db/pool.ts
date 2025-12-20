@@ -36,5 +36,18 @@ export async function createPoolInDb(params: CreatePoolInDbParams) {
 
     });
 
+}
 
+export async function getPoolFromAddress(pair: string) {
+
+    const pool = await prisma.createdPool.findUnique({
+
+        where: {
+
+            pairAddress: pair
+        }
+    
+    });
+
+    return pool;
 }

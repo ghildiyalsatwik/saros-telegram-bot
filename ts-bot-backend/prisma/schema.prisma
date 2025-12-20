@@ -22,6 +22,7 @@ model User {
 
   MintedTokens        MintedToken[] @relation("UserLaunchedTokens")
   CreatedPools        CreatedPool[] @relation("UserCreatedPools")
+  CreatedPositions    CreatedPosition[]
 
 }
 
@@ -55,4 +56,21 @@ model CreatedPool {
   ratePrice       Int?
 
   user            User     @relation("UserCreatedPools", fields: [telegramId], references: [telegramId])
+  positions       CreatedPosition[]
+}
+
+model CreatedPosition {
+  id            String   @id @default(cuid())
+  telegramId    BigInt
+  pairAddress   String
+  positionMint  String   @unique
+  lowerBin      Int
+  upperBin      Int
+
+  // Relations
+  user          User         @relation(fields: [telegramId], references: [telegramId])
+  pool          CreatedPool  @relation(fields: [pairAddress], references: [pairAddress])
+
+  @@index([telegramId])
+  @@index([pairAddress])
 }

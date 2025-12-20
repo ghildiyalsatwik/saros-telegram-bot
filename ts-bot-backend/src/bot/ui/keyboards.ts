@@ -45,6 +45,10 @@ export const homeKeyboard = Markup.inlineKeyboard([
 
     [
         Markup.button.callback("Create Saros DLMM Pool", "CREATE_POOL")
+    ],
+
+    [
+        Markup.button.callback("Create Saros DLMM Pool Position", "CREATE_POSITION")
     ]
 
 ]);
