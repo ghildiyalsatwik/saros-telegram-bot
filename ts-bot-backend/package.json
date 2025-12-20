@@ -8,7 +8,7 @@
     "reset": "docker exec -it redis-local redis-cli FLUSHALL && prisma migrate reset --force",
     "reset-redis": "docker exec -t redis-local redis-cli FLUSHALL",
     "reset-db": "prisma migrate reset --force",
-    "dev": "npx tsx --loader ./anchor-loader.js --loader ./resolve-lodash.js src/bot/index.ts"
+    "dev": "tsx --import ./register-loaders.js src/bot/index.ts"
   },
   "keywords": [],
   "author": "",

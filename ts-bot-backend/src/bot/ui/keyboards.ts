@@ -89,3 +89,16 @@ export const liquidityShapesKeyboard = Markup.inlineKeyboard([
         Markup.button.callback("Go back Home", "HOME")
     ]
 ]);
+
+export const removeLiquiditykeyboard = Markup.inlineKeyboard([
+
+    [   
+        Markup.button.callback("Token X", "TOKENX"),
+
+        Markup.button.callback("Token Y", "TOKENY")
+    ],
+
+    [
+        Markup.button.callback("Go back Home", "HOME")
+    ]
+]);

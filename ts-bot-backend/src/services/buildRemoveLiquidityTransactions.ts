@@ -2,7 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 import { getSarosDLLMPair } from "../utils/getSarosDLMMPair.js";
 import { RemoveLiquidityType } from "@saros-finance/dlmm-sdk";
 
-export async function buildClosePositionTransactions(positionMint: string, pubkey: string, pair: string) {
+export async function buildRemoveLiquidityTransactions(positionMint: string, pubkey: string, pair: string, token: RemoveLiquidityType) {
 
     const sarosDLLMPair = getSarosDLLMPair(pair);
 
@@ -12,7 +12,7 @@ export async function buildClosePositionTransactions(positionMint: string, pubke
 
         payer: new PublicKey(pubkey),
 
-        type: RemoveLiquidityType.All
+        type: token
     
     });
 
