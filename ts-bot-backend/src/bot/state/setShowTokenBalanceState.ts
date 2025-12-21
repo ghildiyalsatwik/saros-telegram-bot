@@ -9,16 +9,3 @@ export async function setShowTokenBalanceStateStep1(userId: number) {
         step: "1"
     });
 }
-
-export async function setShowTokenBalanceStateComplete(userId: number, mint: string) {
-
-    await redis.hSet(`tg:session:${userId}`, {
-
-        step: "2",
-
-        params: JSON.stringify({
-
-            mint: mint
-        })
-    });
-};

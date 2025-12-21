@@ -82,10 +82,13 @@ import {
 from "./state/setSwapSarosDLMMState.js";
 import { isValidSlippage } from "../utils/isValidSlippage.js";
 import { buildSarosDLMMSwapTransaction } from "../services/buildSarosDLMMSwapTransaction.js";
-import { setShowTokenBalanceStateStep1, 
-    setShowTokenBalanceStateComplete }
-from "./state/setShowTokenBalanceState.js";
+import { setShowTokenBalanceStateStep1 } from "./state/setShowTokenBalanceState.js";
 import { getToken2022Balance } from "../services/getToken2022Balance.js";
+import { 
+    setTokenTransferStateStep1, setTokenTransferStateStep2,
+    setTokenTransferStateStep3, setTokenTransferStateComplete }
+from "./state/setTokenTransferState.js";
+import { buildTokenTransferTransaction } from "../services/buildTransferTokenTransaction.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
@@ -239,7 +242,6 @@ bot.on(message("text"), async (ctx) => {
                     
                 { parse_mode: "Markdown", ...getBackHomeKeyboard}
             )
-
         }
 
         if(session.step === "2") {
@@ -1031,14 +1033,119 @@ bot.on(message("text"), async (ctx) => {
             );
         }
 
-        await setShowTokenBalanceStateComplete(userId, mint);
+        const pubkey = session?.publicKey!;
+
+        const balance = await getToken2022Balance(mint, pubkey);
 
         return ctx.reply(
-            
-            "Mint address received. Press execute to confirm the transaction.",
+        
+            `Balance of token: ${mint} is ${balance}.`,
     
-            { parse_mode: "Markdown", ...executeTransactionKeyboard}
+            { parse_mode: "Markdown", ...homeKeyboard}
         );
+
+    }
+
+    if(session.action === "TRANSFER_SPL_TOKENS") {
+
+        if(session.step === "1") {
+
+            const mint = ctx.message.text;
+
+            if(!isValidSolanaAddress(mint)) {
+
+                return ctx.reply(
+            
+                    "Please enter a valid Solana address.",
+            
+                    { parse_mode: "Markdown", ...homeKeyboard}
+                );
+            }
+
+            await setTokenTransferStateStep2(userId, mint);
+
+            return ctx.reply(
+        
+                "Mint address received. Please enter the recipient address.",
+        
+                { parse_mode: "Markdown", ...homeKeyboard}
+            );
+
+        }
+
+        if(session.step === "2") {
+
+            const to = ctx.message.text;
+
+            if(!isValidSolanaAddress(to)) {
+
+                return ctx.reply(
+            
+                    "Please enter a valid Solana address.",
+            
+                    { parse_mode: "Markdown", ...homeKeyboard}
+                );
+            }
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const mint = parsedParams.mint;
+
+            await setTokenTransferStateStep3(userId, mint, to);
+
+            return ctx.reply(
+        
+                "Recipient address received. Please enter the transfer amount.",
+        
+                { parse_mode: "Markdown", ...homeKeyboard}
+            );
+
+        }
+
+        if(session.step === "3") {
+
+            const amount = ctx.message.text;
+
+            const pubkey = session.publicKey!;
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const mint = parsedParams.mint;
+
+            const to = parsedParams.to;
+
+            if(!isAmountValid(amount)) {
+
+                return ctx.reply(
+            
+                    "Please enter a valid transfer amount.",
+            
+                    { parse_mode: "Markdown", ...homeKeyboard}
+                );
+            }
+
+            const balance = await getToken2022Balance(mint, pubkey);
+
+            if(parseFloat(amount) > balance) {
+
+                return ctx.reply(
+            
+                    `You do not have sufficient balance for token: ${mint}. Please enter a lower amount.`,
+            
+                    { parse_mode: "Markdown", ...homeKeyboard}
+                );
+            }
+
+            await setTokenTransferStateComplete(userId, mint, to, amount);
+
+            return ctx.reply(
+            
+                "Transfer amount received. Press execute to confirm the transaction.",
+        
+                { parse_mode: "Markdown", ...executeTransactionKeyboard}
+            );
+
+        }
     }
 
 });
@@ -1500,6 +1607,20 @@ bot.action("SHOW_TOKEN_BALANCE", async (ctx) => {
     await setShowTokenBalanceStateStep1(userId);
 
     ctx.reply("Please enter the mint address of the token whose balance you want to check.",
+
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
+});
+
+bot.action("TRANSFER_SPL_TOKENS", async (ctx) => {
+
+    await ctx.answerCbQuery("Preparing transfer transaction...");
+
+    const userId = ctx.from.id;
+
+    await setTokenTransferStateStep1(userId);
+
+    ctx.reply("Please enter the mint address of the token you want to transfer.",
 
         { parse_mode: "Markdown", ...getBackHomeKeyboard}
     );
@@ -2075,24 +2196,45 @@ bot.action("EXECUTE", async(ctx) => {
         );
     }
 
-    if(session!.action === "SHOW_TOKEN_BALANCE") {
+    if(session?.action === "TRANSFER_SPL_TOKENS") {
 
-        const parsedParams = JSON.parse(session?.params!);
+        const parsedParams = JSON.parse(session.params!);
 
         const mint = parsedParams.mint;
 
-        const pubkey = session?.publicKey!;
+        const to = parsedParams.to;
 
-        const balance = await getToken2022Balance(mint, pubkey);
+        const amount = parsedParams.amount;
+
+        const pubkey = session.publicKey!;
+
+        const tx = await buildTokenTransferTransaction(pubkey, mint, to, parseFloat(amount));
+
+        const signedTx = await signTransaction(userId, tx);
+
+        const {sig, failed} = await sendTransaction(userId, signedTx);
+
+        if(failed) {
+
+            await setHomeState(userId);
+
+            return ctx.reply(
+        
+                `Your transaction failed. Please try again.`,
+        
+                { parse_mode: "Markdown", ...homeKeyboard}
+            );
+        }
+
+        await setHomeState(userId);
 
         return ctx.reply(
         
-            `Balance of token: ${mint} is ${balance}.`,
+            `Your transaction is confirmed!\n${amount} of token: ${mint} has been transferred to ${to}.\nTransaction Signature: ${sig}.`,
     
             { parse_mode: "Markdown", ...homeKeyboard}
         );
     }
-
 });
 
 async function startBot(): Promise<void> {
