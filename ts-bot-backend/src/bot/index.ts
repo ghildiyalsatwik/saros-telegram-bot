@@ -6,8 +6,15 @@ import { initSession } from "./state/initSession.js";
 import { getSession } from "./state/getSession.js";
 import { getDefaultMessage } from "./ui/defaultMessage.js";
 import { createUserWallet } from "../services/createWallet.js";
-import { homeKeyboard, createWalletKeyboard, getBackHomeKeyboard, executeTransactionKeyboard, liquidityShapesKeyboard, removeLiquiditykeyboard } from "./ui/keyboards.js";
-import { setSolTransferStateAddress, setSolTransferStateAmount, setSolTransferComplete } from "./state/solTransferState.js";
+import { 
+    homeKeyboard, createWalletKeyboard, getBackHomeKeyboard, executeTransactionKeyboard,
+    liquidityShapesKeyboard, removeLiquiditykeyboard,
+    sarosDLMMSwapReceiveKeyboard, sarosDLMMSwapExactAmountKeyboard }
+from "./ui/keyboards.js";
+import { 
+    setSolTransferStateAddress, setSolTransferStateAmount,
+    setSolTransferComplete }
+    from "./state/solTransferState.js";
 import { setHomeState } from "./state/setHomeState.js";
 import { isValidSolanaAddress } from "../utils/validSolanaAddress.js";
 import { isAmountValid } from "../utils/isAmountValid.js";
@@ -16,30 +23,48 @@ import { buildTransferTransaction } from "../services/buildTransferTransaction.j
 import { signSolTransferTransaction } from "../services/signSolTransferTransaction.js";
 import { sendSolTransferTransaction } from "../services/sendSolTransferTransaction.js";
 import { getBalanceInSolana } from "../utils/getBalanceInSolana.js";
-import { setLaunchTokenStateStep1, setLaunchTokenStateStep2, setLaunchTokenStateStep3, setLaunchTokenStateStep4 } from "./state/launchTokenState.js";
+import { 
+    setLaunchTokenStateStep1, setLaunchTokenStateStep2,
+    setLaunchTokenStateStep3, setLaunchTokenStateStep4 }
+from "./state/launchTokenState.js";
 import { buildLaunchTokenTransaction } from "../services/buildLaunchTokenTransaction.js";
 import { signLaunchTokenTransaction } from "../services/signLaunchTokenTransaction.js";
 import { sendLaunchTokenTransaction } from "../services/sendLaunchTokenTransaction.js";
 import { createTokenInDb, getTokenByMintAddressAndUser } from "../db/token.js";
 import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { signTransaction } from "../services/signTransaction.js";
-import { setMintTokenStateStep1, setMintTokenStateStep2, setMintTokenStateStep3, setMintTokenStateStepComplete} from "./state/setMintTokenState.js";
+import { 
+    setMintTokenStateStep1, setMintTokenStateStep2,
+    setMintTokenStateStep3, setMintTokenStateStepComplete} 
+from "./state/setMintTokenState.js";
 import { accountExists } from "../utils/accountExists.js";
 import { getUserPublicKey } from "../utils/getUserPublicKey.js";
 import { buildMintTokenTransaction } from "../services/buildMintTokenTransaction.js";
 import { sendTransaction } from "../services/sendTransaction.js";
-import { setCreatePoolStateStep1, setCreatePoolStateStep2, setCreatePoolStateStep3, setCreatePoolStateStep4, setCreatePoolStateComplete } from "./state/setCreatePoolState.js";
+import { 
+    setCreatePoolStateStep1, setCreatePoolStateStep2, setCreatePoolStateStep3,
+    setCreatePoolStateStep4, setCreatePoolStateComplete }
+from "./state/setCreatePoolState.js";
 import { getTokenDecimals } from "../utils/getTokenDecimals.js";
 import { buildCreatePoolTransaction } from "../services/createPoolTransaction.js";
 import { createPoolInDb } from "../db/pool.js";
-import { setCreatePositionStateStep1, setCreatePositionStateStep2, setCreatePositionStateStep3, setCreatePositionStateComplete } from "./state/setCreatePositionState.js";
+import { 
+    setCreatePositionStateStep1, setCreatePositionStateStep2,
+    setCreatePositionStateStep3, setCreatePositionStateComplete }
+from "./state/setCreatePositionState.js";
 import { poolExists } from "../utils/poolExists.js";
 import { isValidLowerBin } from "../utils/isValidLowerBin.js";
 import { isValidUpperBin } from "../utils/isValidUpperBin.js";
 import { buildCreatePositionTransaction } from "../services/buildCreatePositionTransaction.js";
 import { createPositionInDb, getPairFromPositionMint } from "../db/position.js";
-import { setAddLiquidityStateStep1, setAddLiquidityStateStep2, setAddLiquidityStateStep3, setAddLiquidityStateStep4, setAddLiquidityStateComplete } from "./state/setAddLiquidityState.js";
-import { getPositionByPositionAddress, getPositionByUserAndPositionMint, deletePositionFromDb } from "../db/position.js";
+import { 
+    setAddLiquidityStateStep1, setAddLiquidityStateStep2,
+    setAddLiquidityStateStep3, setAddLiquidityStateStep4, setAddLiquidityStateComplete }
+from "./state/setAddLiquidityState.js";
+import { 
+    getPositionByPositionAddress, getPositionByUserAndPositionMint, 
+    deletePositionFromDb } 
+from "../db/position.js";
 import { getTokenDecimalsFromPositionMint } from "../utils/getTokenDecimalsFromPositionMint.js";
 import { buildAddLiquidityTransaction } from "../services/buildAddLiquidityTransaction.js";
 import { setClosePositionStateStep1, setClosePositionStateComplete } from "./state/setClosePositionState.js";
@@ -50,6 +75,13 @@ import { RemoveLiquidityType } from "@saros-finance/dlmm-sdk";
 import { setClaimRewardStateStep1, setClaimRewardStateComplete } from "./state/setClaimRewardState.js";
 import { isRewardAvailable } from "../utils/isRewardAvailable.js";
 import { buildClaimRewardTransaction } from "../services/buildClaimRewardTransaction.js";
+import { 
+    setSwapSarosDLMMStateStep1, setSwapSarosDLMMStateStep2,
+    setSwapSarosDLMMStateStep3, setSwapSarosDLMMStateStep4, 
+    setSwapSarosDLMMStateStep5, setSwapSarosDLMMStateComplete }
+from "./state/setSwapSarosDLMMState.js";
+import { isValidSlippage } from "../utils/isValidSlippage.js";
+import { buildSarosDLMMSwapTransaction } from "../services/buildSarosDLMMSwapTransaction.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
@@ -127,7 +159,7 @@ bot.on(message("text"), async (ctx) => {
 
             const isValidAddress = isValidSolanaAddress(address);
 
-            if(isValidAddress === false) {
+            if(!isValidAddress) {
 
                 return ctx.reply(
         
@@ -153,7 +185,7 @@ bot.on(message("text"), async (ctx) => {
 
             const amount = ctx.message.text;
 
-            if(isAmountValid(amount) === false) {
+            if(!isAmountValid(amount)) {
 
                 return ctx.reply(
         
@@ -165,7 +197,7 @@ bot.on(message("text"), async (ctx) => {
 
             const isBalanceSufficient = await isBalanceAvailable(parseFloat(amount), session.publicKey);
 
-            if(isBalanceSufficient === false) {
+            if(!isBalanceSufficient) {
 
                 return ctx.reply(
         
@@ -505,7 +537,7 @@ bot.on(message("text"), async (ctx) => {
 
             const isValid = isValidSolanaAddress(pair);
 
-            if(isValid === false) {
+            if(!isValid) {
 
                 return ctx.reply(
             
@@ -513,11 +545,11 @@ bot.on(message("text"), async (ctx) => {
             
                     { parse_mode: "Markdown", ...getBackHomeKeyboard}
                 );
-            }
+            } 
 
             const poolExist = await poolExists(pair);
 
-            if(poolExist === false) {
+            if(!poolExist) {
 
                 return ctx.reply(
             
@@ -544,7 +576,7 @@ bot.on(message("text"), async (ctx) => {
 
             const valid = isValidLowerBin(lower);
 
-            if(valid === false) {
+            if(!valid) {
 
                 return ctx.reply(
             
@@ -577,7 +609,7 @@ bot.on(message("text"), async (ctx) => {
 
             const valid = isValidUpperBin(upper);
 
-            if(valid === false) {
+            if(!valid) {
 
                 return ctx.reply(
             
@@ -873,6 +905,199 @@ bot.on(message("text"), async (ctx) => {
         }
     }
 
+    if(session.action === "SWAP_SAROS_DLMM") {
+
+        if(session.step === "1") {
+
+            const pair = ctx.message.text;
+
+            if(!isValidSolanaAddress(pair)) {
+
+                return ctx.reply(
+            
+                    "Please enter a valid pool address.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+            } 
+
+            const poolExist = await poolExists(pair);
+
+            if(!poolExist) {
+
+                return ctx.reply(
+            
+                    "No such Saros DLMM pool exists!. Please enter a different one.",
+            
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+
+            }
+
+            await setSwapSarosDLMMStateStep2(userId, pair);
+
+            return ctx.reply(
+            
+                "Which token do you want to receive?",
+        
+                { parse_mode: "Markdown", ...sarosDLMMSwapReceiveKeyboard}
+            );
+
+        }
+
+        if(session.step === "4") {
+
+            const amount = ctx.message.text;
+    
+            const parsedParams = JSON.parse(session?.params!);
+    
+            const pair = parsedParams.pair;
+    
+            const swapForY = parsedParams.swapForY;
+    
+            const isExactInput = parsedParams.isExactInput;
+    
+            if(!isAmountValid(amount)) {
+    
+                return ctx.reply(
+        
+                    "Please enter a valid amount",
+            
+                    { parse_mode: "Markdown", ...homeKeyboard}
+                );
+            }
+    
+            await setSwapSarosDLMMStateStep5(userId, pair, swapForY, isExactInput, amount);
+    
+            return ctx.reply(
+        
+                "Please enter an acceptable slippage percentage (0-100):",
+        
+                { parse_mode: "Markdown", ...homeKeyboard}
+            );
+        }
+    
+        if(session.step === "5") {
+    
+            const slippage = ctx.message.text;
+    
+            const parsedParams = JSON.parse(session?.params!);
+    
+            const pair = parsedParams.pair;
+    
+            const swapForY = parsedParams.swapForY;
+    
+            const isExactInput = parsedParams.isExactInput;
+    
+            const amount = parsedParams.amount;
+    
+            if(!isValidSlippage(slippage)) {
+    
+                return ctx.reply(
+        
+                    "Invalid Slippage. Please enter a valid valie (0-100):",
+            
+                    { parse_mode: "Markdown", ...homeKeyboard}
+                );
+    
+            }
+    
+            await setSwapSarosDLMMStateComplete(userId, pair, swapForY, isExactInput, amount, slippage);
+    
+            return ctx.reply(
+            
+                "Slippage received. Press execute to confirm the transaction.",
+        
+                { parse_mode: "Markdown", ...executeTransactionKeyboard}
+            );
+        }
+    }
+
+});
+
+bot.action("RECEIVEX", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    const session = await getSession(userId);
+
+    const parsedParams = JSON.parse(session?.params!);
+
+    const pair = parsedParams.pair;
+    
+    await setSwapSarosDLMMStateStep3(userId, pair, "X");
+
+    return ctx.reply(
+        
+        "Got it, you want to receive token X. Do you want to specify exact input token Y amount or exact output token X amount?",
+
+        { parse_mode: "Markdown", ...sarosDLMMSwapExactAmountKeyboard}
+    );
+});
+
+bot.action("RECEIVEY", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    const session = await getSession(userId);
+
+    const parsedParams = JSON.parse(session?.params!);
+
+    const pair = parsedParams.pair;
+    
+    await setSwapSarosDLMMStateStep3(userId, pair, "Y");
+
+    return ctx.reply(
+        
+        "Got it, you want to receive token Y. Do you want to specify exact input token X amount or exact output token Y amount?",
+
+        { parse_mode: "Markdown", ...sarosDLMMSwapExactAmountKeyboard}
+    );
+});
+
+bot.action("EXACTINPUT", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    const session = await getSession(userId);
+
+    const parsedParams = JSON.parse(session?.params!);
+
+    const pair = parsedParams.pair;
+
+    const swapForY = parsedParams.swapForY;
+
+    await setSwapSarosDLMMStateStep4(userId, pair, swapForY, "INPUT");
+
+    return ctx.reply(
+        
+        "Please enter the exact amount:",
+
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
+
+});
+
+bot.action("EXACTOUTPUT", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    const session = await getSession(userId);
+
+    const parsedParams = JSON.parse(session?.params!);
+
+    const pair = parsedParams.pair;
+
+    const swapForY = parsedParams.swapForY;
+
+    await setSwapSarosDLMMStateStep4(userId, pair, swapForY, "OUTPUT");
+
+    return ctx.reply(
+        
+        "Please enter the exact amount:",
+
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
 });
 
 bot.action("TOKENX", async (ctx) => {
@@ -1221,6 +1446,21 @@ bot.action("CLAIM_REWARD", async (ctx) => {
 
         { parse_mode: "Markdown", ...getBackHomeKeyboard}
     );
+});
+
+bot.action("SWAP_SAROS_DLMM", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    ctx.answerCbQuery("Preparing Swap...");
+
+    await setSwapSarosDLMMStateStep1(userId);
+
+    ctx.reply("Please enter the pool address on which you want to swap.",
+
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
+
 });
 
 bot.action("EXECUTE", async(ctx) => {
@@ -1743,7 +1983,51 @@ bot.action("EXECUTE", async(ctx) => {
 
         return ctx.reply(
         
-            `Your transaction is confirmed!\nReward has been claimed for position: ${positionMint} from pool: ${pair}.\nTransaction Signature: ${sig}.`,
+            `Your transaction is confirmed!\nReward has been claimed for position: ${positionMint} from pool: ${pair}.\nRewards available at ${rewardTokenMint}.\nTransaction Signature: ${sig}.`,
+    
+            { parse_mode: "Markdown", ...homeKeyboard}
+        );
+    }
+
+    if(session!.action === "SWAP_SAROS_DLMM") {
+
+        const parsedParams = JSON.parse(session?.params!);
+    
+        const pair = parsedParams.pair;
+    
+        const swapForY = parsedParams.swapForY;
+    
+        const isExactInput = parsedParams.isExactInput;
+    
+        const amount = parsedParams.amount;
+
+        const slippage = parsedParams.slippage;
+
+        const pubkey = parsedParams.publicKey!;
+
+        const tx = await buildSarosDLMMSwapTransaction(pubkey, pair, swapForY, isExactInput, parseFloat(amount), parseFloat(slippage));
+
+        const signedTx = await signTransaction(userId, tx);
+
+        const {sig, failed} = await sendTransaction(userId, signedTx);
+
+        if(failed) {
+
+            await setHomeState(userId);
+
+            return ctx.reply(
+        
+                `Your transaction failed. Please try again.`,
+        
+                { parse_mode: "Markdown", ...homeKeyboard}
+            );
+        }
+
+        await setHomeState(userId);
+
+        return ctx.reply(
+        
+            `Your transaction is confirmed!\nTransaction Signature: ${sig}.`,
     
             { parse_mode: "Markdown", ...homeKeyboard}
         );

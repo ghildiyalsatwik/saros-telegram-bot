@@ -118,3 +118,30 @@ export const removeLiquiditykeyboard = Markup.inlineKeyboard([
         Markup.button.callback("Go back Home", "HOME")
     ]
 ]);
+
+export const sarosDLMMSwapReceiveKeyboard = Markup.inlineKeyboard([
+
+    [   
+        Markup.button.callback("Receive Token X", "RECEIVEX"),
+
+        Markup.button.callback("Receive Token Y", "RECEIVEY")
+    ],
+
+    [
+        Markup.button.callback("Go back Home", "HOME")
+    ]
+]);
+
+
+export const sarosDLMMSwapExactAmountKeyboard = Markup.inlineKeyboard([
+
+    [   
+        Markup.button.callback("Exact Input Amount", "EXACTINPUT"),
+
+        Markup.button.callback("Exact Output Amount Y", "EXACTOUTPUT")
+    ],
+
+    [
+        Markup.button.callback("Go back Home", "HOME")
+    ]
+]);
