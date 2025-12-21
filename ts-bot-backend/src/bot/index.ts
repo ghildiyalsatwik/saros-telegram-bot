@@ -44,10 +44,12 @@ import { getTokenDecimalsFromPositionMint } from "../utils/getTokenDecimalsFromP
 import { buildAddLiquidityTransaction } from "../services/buildAddLiquidityTransaction.js";
 import { setClosePositionStateStep1, setClosePositionStateComplete } from "./state/setClosePositionState.js";
 import { buildClosePositionTransactions } from "../services/buildClosePositionTransactions.js";
-import { useReducer } from "react";
 import { setRemoveLiquidityStateComplete, setRemoveLiquidityStateStep2 } from "./state/setRemoveLiquidityState.js";
 import { buildRemoveLiquidityTransactions } from "../services/buildRemoveLiquidityTransactions.js";
 import { RemoveLiquidityType } from "@saros-finance/dlmm-sdk";
+import { setClaimRewardStateStep1, setClaimRewardStateComplete } from "./state/setClaimRewardState.js";
+import { isRewardAvailable } from "../utils/isRewardAvailable.js";
+import { buildClaimRewardTransaction } from "../services/buildClaimRewardTransaction.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
@@ -811,6 +813,66 @@ bot.on(message("text"), async (ctx) => {
         }
     }
 
+    if(session.action === "CLAIM_REWARD") {
+
+        if(session.step === "1") {
+
+            const positionMint = ctx.message.text;
+
+            if(!isValidSolanaAddress(positionMint)) {
+
+                return ctx.reply(
+            
+                    "Please enter a valid Solana address.",
+    
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+            }
+
+            const position = await getPositionByUserAndPositionMint(userId, positionMint);
+
+            if(!position) {
+
+                return ctx.reply(
+            
+                    "You do not have any such position. Please enter a position that you own.",
+    
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard}
+                );
+
+            }
+
+            const pair = position.pairAddress;
+
+            const res = await isRewardAvailable(pair);
+
+            if(!res.isAvailable) {
+
+                await setHomeState(userId);
+
+                return ctx.reply(
+        
+                    `Currently there are no rewards to claim on the pool: ${pair}.`,
+            
+                    { parse_mode: "Markdown", ...homeKeyboard}
+                );
+
+            }
+
+            const rewardTokenMint = res.rewardTokenMint!;
+
+            await setClaimRewardStateComplete(userId, positionMint, pair, rewardTokenMint.toBase58());
+
+            return ctx.reply(
+            
+                "Position mint address and pool address received. Press execute to confirm the transaction.",
+        
+                { parse_mode: "Markdown", ...executeTransactionKeyboard}
+            );
+
+        }
+    }
+
 });
 
 bot.action("TOKENX", async (ctx) => {
@@ -1147,6 +1209,20 @@ bot.action("REMOVE_LIQUIDITY", async (ctx) => {
     );
 });
 
+bot.action("CLAIM_REWARD", async (ctx) => {
+
+    await ctx.answerCbQuery("Preparing to claim reward...");
+
+    const userId = ctx.from.id;
+
+    await setClaimRewardStateStep1(userId);
+
+    ctx.reply("Please enter the position mint from which you want to claim the reward.",
+
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
+});
+
 bot.action("EXECUTE", async(ctx) => {
 
     await ctx.answerCbQuery("Confirming your transaction...");
@@ -1171,7 +1247,7 @@ bot.action("EXECUTE", async(ctx) => {
 
         const { sig, failed } = await sendSolTransferTransaction(userId, txSigned);
 
-        if(failed === true) {
+        if(failed) {
 
             await setHomeState(userId);
 
@@ -1215,7 +1291,7 @@ bot.action("EXECUTE", async(ctx) => {
 
         const {sig, failed} = await sendLaunchTokenTransaction(userId, txSigned, mintKeypair);
 
-        if(failed === true) {
+        if(failed) {
 
             await setHomeState(userId);
 
@@ -1262,7 +1338,7 @@ bot.action("EXECUTE", async(ctx) => {
 
         const {sig, failed} = await sendTransaction(userId, signedTx);
 
-        if(failed === true) {
+        if(failed) {
 
             await setHomeState(userId);
 
@@ -1311,7 +1387,7 @@ bot.action("EXECUTE", async(ctx) => {
 
         const {sig, failed} = await sendTransaction(userId, signedTx);
 
-        if(failed === true) {
+        if(failed) {
 
             await setHomeState(userId);
 
@@ -1359,7 +1435,7 @@ bot.action("EXECUTE", async(ctx) => {
 
         const {sig, failed} = await sendTransaction(userId, signedTx);
 
-        if(failed === true) {
+        if(failed) {
 
             await setHomeState(userId);
 
@@ -1412,7 +1488,7 @@ bot.action("EXECUTE", async(ctx) => {
 
         const {sig, failed} = await sendTransaction(userId, signedTx);
 
-        if(failed === true) {
+        if(failed) {
 
             await setHomeState(userId);
 
@@ -1460,7 +1536,7 @@ bot.action("EXECUTE", async(ctx) => {
 
             const {sig, failed} = await sendTransaction(userId, setUpTransactionSigned);
 
-            if(failed === true) {
+            if(failed) {
 
                 await setHomeState(userId);
 
@@ -1484,7 +1560,7 @@ bot.action("EXECUTE", async(ctx) => {
 
             const {sig, failed} = await sendTransaction(userId, signedTx);
 
-            if(failed === true) {
+            if(failed) {
 
                 await setHomeState(userId);
 
@@ -1505,7 +1581,7 @@ bot.action("EXECUTE", async(ctx) => {
 
             const {sig, failed} = await sendTransaction(userId, signedCleanUpTx);
 
-            if(failed === true) {
+            if(failed) {
 
                 await setHomeState(userId);
 
@@ -1526,7 +1602,7 @@ bot.action("EXECUTE", async(ctx) => {
 
         return ctx.reply(
         
-            `Your transaction is confirmed!\Position: ${positionMint} has been closed.`,
+            `Your transaction is confirmed!\nPosition: ${positionMint} has been closed.`,
     
             { parse_mode: "Markdown", ...homeKeyboard}
         );
@@ -1563,7 +1639,7 @@ bot.action("EXECUTE", async(ctx) => {
 
             const {sig, failed} = await sendTransaction(userId, setUpTransactionSigned);
 
-            if(failed === true) {
+            if(failed) {
 
                 await setHomeState(userId);
 
@@ -1587,7 +1663,7 @@ bot.action("EXECUTE", async(ctx) => {
 
             const {sig, failed} = await sendTransaction(userId, signedTx);
 
-            if(failed === true) {
+            if(failed) {
 
                 await setHomeState(userId);
 
@@ -1608,7 +1684,7 @@ bot.action("EXECUTE", async(ctx) => {
 
             const {sig, failed} = await sendTransaction(userId, signedCleanUpTx);
 
-            if(failed === true) {
+            if(failed) {
 
                 await setHomeState(userId);
 
@@ -1631,7 +1707,46 @@ bot.action("EXECUTE", async(ctx) => {
     
             { parse_mode: "Markdown", ...homeKeyboard}
         );
+    }
 
+    if(session?.action === "CLAIM_REWARD") {
+
+        const parsedParams = JSON.parse(session!.params!);
+
+        const positionMint = parsedParams.positionMint;
+
+        const pair = parsedParams.pair;
+
+        const rewardTokenMint = parsedParams.rewardTokenMint;
+
+        const pubkey = parsedParams.publicKey!;
+
+        const tx = await buildClaimRewardTransaction(pubkey, positionMint, pair, rewardTokenMint);
+
+        const signedTx = await signTransaction(userId, tx);
+
+        const {sig, failed} = await sendTransaction(userId, signedTx);
+
+        if(failed) {
+
+            await setHomeState(userId);
+
+            return ctx.reply(
+        
+                `Your transaction failed. Please try again.`,
+        
+                { parse_mode: "Markdown", ...homeKeyboard}
+            );
+        }
+
+        await setHomeState(userId);
+
+        return ctx.reply(
+        
+            `Your transaction is confirmed!\nReward has been claimed for position: ${positionMint} from pool: ${pair}.\nTransaction Signature: ${sig}.`,
+    
+            { parse_mode: "Markdown", ...homeKeyboard}
+        );
     }
 
 });

@@ -55,9 +55,25 @@ export const homeKeyboard = Markup.inlineKeyboard([
     ],
 
     [
+        Markup.button.callback("Close all DLMM Positions for Pool", "CREATE_POSITIONS_POOL"),
+    ],
+
+    [
+        Markup.button.callback("Close all DLMM Positions", "CLOSE_POSITIONS")
+    ],
+
+    [
         Markup.button.callback("Add liquidity DLMM", "ADD_LIQUIDITY"),
 
         Markup.button.callback("Remove liquidity DLMM", "REMOVE_LIQUIDITY")
+    ],
+
+    [
+        Markup.button.callback("View Position", "VIEW_POSITION"),
+
+        Markup.button.callback("View All Positions", "VIEW_POSITION"),
+
+        Markup.button.callback("Claim Reward", "CLAIM_REWARD")
     ]
 
 ]);
