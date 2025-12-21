@@ -6,6 +6,7 @@ import { devnetConnection } from "../utils/connections.js";
 
 let wallet: Keypair;
 let pubkey: string;
+
 beforeAll(async () => {
 
     const secret = process.env.TEST_PRIVATE_KEY!;

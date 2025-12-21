@@ -82,6 +82,10 @@ import {
 from "./state/setSwapSarosDLMMState.js";
 import { isValidSlippage } from "../utils/isValidSlippage.js";
 import { buildSarosDLMMSwapTransaction } from "../services/buildSarosDLMMSwapTransaction.js";
+import { setShowTokenBalanceStateStep1, 
+    setShowTokenBalanceStateComplete }
+from "./state/setShowTokenBalanceState.js";
+import { getToken2022Balance } from "../services/getToken2022Balance.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
@@ -1013,6 +1017,30 @@ bot.on(message("text"), async (ctx) => {
         }
     }
 
+    if(session.action === "SHOW_TOKEN_BALANCE") {
+
+        const mint = ctx.message.text;
+
+        if(!isValidSolanaAddress(mint)) {
+
+            return ctx.reply(
+        
+                "Please enter a valid Solana address.",
+        
+                { parse_mode: "Markdown", ...homeKeyboard}
+            );
+        }
+
+        await setShowTokenBalanceStateComplete(userId, mint);
+
+        return ctx.reply(
+            
+            "Mint address received. Press execute to confirm the transaction.",
+    
+            { parse_mode: "Markdown", ...executeTransactionKeyboard}
+        );
+    }
+
 });
 
 bot.action("RECEIVEX", async (ctx) => {
@@ -1461,6 +1489,20 @@ bot.action("SWAP_SAROS_DLMM", async (ctx) => {
         { parse_mode: "Markdown", ...getBackHomeKeyboard}
     );
 
+});
+
+bot.action("SHOW_TOKEN_BALANCE", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    ctx.answerCbQuery("Showing token balance...");
+
+    await setShowTokenBalanceStateStep1(userId);
+
+    ctx.reply("Please enter the mint address of the token whose balance you want to check.",
+
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
 });
 
 bot.action("EXECUTE", async(ctx) => {
@@ -2028,6 +2070,24 @@ bot.action("EXECUTE", async(ctx) => {
         return ctx.reply(
         
             `Your transaction is confirmed!\nTransaction Signature: ${sig}.`,
+    
+            { parse_mode: "Markdown", ...homeKeyboard}
+        );
+    }
+
+    if(session!.action === "SHOW_TOKEN_BALANCE") {
+
+        const parsedParams = JSON.parse(session?.params!);
+
+        const mint = parsedParams.mint;
+
+        const pubkey = session?.publicKey!;
+
+        const balance = await getToken2022Balance(mint, pubkey);
+
+        return ctx.reply(
+        
+            `Balance of token: ${mint} is ${balance}.`,
     
             { parse_mode: "Markdown", ...homeKeyboard}
         );
