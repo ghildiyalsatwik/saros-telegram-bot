@@ -45,7 +45,9 @@ export const homeKeyboard = Markup.inlineKeyboard([
     ],
 
     [
-        Markup.button.callback("Create DLMM Pool", "CREATE_POOL")
+        Markup.button.callback("Create DLMM Pool", "CREATE_POOL"),
+
+        Markup.button.callback("Find DLMM Pool", "FIND_POOL"),
     ],
 
     [
@@ -139,6 +141,19 @@ export const sarosDLMMSwapExactAmountKeyboard = Markup.inlineKeyboard([
         Markup.button.callback("Exact Input Amount", "EXACTINPUT"),
 
         Markup.button.callback("Exact Output Amount Y", "EXACTOUTPUT")
+    ],
+
+    [
+        Markup.button.callback("Go back Home", "HOME")
+    ]
+]);
+
+export const findPoolKeyboard = Markup.inlineKeyboard([
+
+    [   
+        Markup.button.callback("1 Token Address", "1MINT"),
+
+        Markup.button.callback("2 Token Addresses", "2MINT")
     ],
 
     [

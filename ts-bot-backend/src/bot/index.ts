@@ -9,7 +9,7 @@ import { createUserWallet } from "../services/createWallet.js";
 import { 
     homeKeyboard, createWalletKeyboard, getBackHomeKeyboard, executeTransactionKeyboard,
     liquidityShapesKeyboard, removeLiquiditykeyboard,
-    sarosDLMMSwapReceiveKeyboard, sarosDLMMSwapExactAmountKeyboard }
+    sarosDLMMSwapReceiveKeyboard, sarosDLMMSwapExactAmountKeyboard, findPoolKeyboard }
 from "./ui/keyboards.js";
 import { 
     setSolTransferStateAddress, setSolTransferStateAmount,
@@ -99,6 +99,9 @@ from "./state/setCloseAllPositionsForPoolState.js";
 import { buildCloseAllPositionsForPoolTransaction }
 from "../services/buildCloseAllPositionsForPoolTransaction.js";
 import { mintedTokenExistsForUser } from "../utils/mintedTokenExistsForUser.js";
+import { setFindPoolStateComplete, setFindPoolStateStep1, setFindPoolStateStep2 } from "./state/setFindPoolState.js";
+import { findPoolsByTokens } from "../services/findPoolsByTokens.js";
+import { setgroups } from "node:process";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
@@ -270,7 +273,6 @@ bot.on(message("text"), async (ctx) => {
             )
 
         }
-
 
         if(session.step === "3") {
 
@@ -1197,9 +1199,100 @@ bot.on(message("text"), async (ctx) => {
         }
     }
 
+    if(session.action === "FIND_POOL") {
+
+        if(session.step === "2") {
+
+            const token1 = ctx.message.text;
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const tokenCount = parsedParams.tokenCount;
+
+            if(!isValidSolanaAddress(token1)) {
+
+                return ctx.reply("Please enter a valid Solana address.",
+
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard }
+                );
+            }
+
+            if(tokenCount === "1") {
+
+                const pools = await findPoolsByTokens(token1, "");
+
+                let reply = `Pools found for token: ${token1}:\n\n`
+
+                const yes = "Y";
+
+                const no = "N";
+
+                for(const pool of pools) {
+
+                    reply += `Pool Address: ${pool.pool}\nReward Pool(Y/N): ${pool.isRewardPool ? yes : no}\n\n`
+                }
+
+                await setHomeState(userId);
+
+                return ctx.reply(reply, { parse_mode: "Markdown", ...homeKeyboard});
+
+
+            } else {
+
+                await setFindPoolStateComplete(userId, tokenCount, token1);
+
+                return ctx.reply("Address of the first token received. Please enter mint address of the second token.",
+
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard }
+                );
+            }
+
+        }
+
+        if(session.step === "3") {
+
+            const token2 = ctx.message.text;
+
+            if(!isValidSolanaAddress(token2)) {
+
+                return ctx.reply("Please enter a valid Solana address.",
+
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard }
+                );
+            }
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const token1 = parsedParams.token1;
+
+            const pools = await findPoolsByTokens(token1, token2);
+
+            let reply = `Pools found for tokens: ${token1} and ${token2}:\n\n`
+
+            const yes = "Y";
+
+            const no = "N";
+
+            for(const pool of pools) {
+
+                reply += `Pool Address: ${pool.pool}\nReward Pool(Y/N): ${pool.isRewardPool ? yes : no}\n\n`
+            }
+
+            await setHomeState(userId);
+
+            return ctx.reply(reply, { parse_mode: "Markdown", ...homeKeyboard});
+        }
+    }
+
+    await setHomeState(userId);
+
+    return ctx.reply(getDefaultMessage(), homeKeyboard);
+
 });
 
 bot.action("RECEIVEX", async (ctx) => {
+
+    await ctx.answerCbQuery("Preparing to serve your request");
 
     const userId = ctx.from.id;
 
@@ -1223,6 +1316,8 @@ bot.action("RECEIVEX", async (ctx) => {
 
 bot.action("RECEIVEY", async (ctx) => {
 
+    await ctx.answerCbQuery("Preparing to serve your request");
+
     const userId = ctx.from.id;
 
     const session = await getSession(userId);
@@ -1244,6 +1339,8 @@ bot.action("RECEIVEY", async (ctx) => {
 });
 
 bot.action("EXACTINPUT", async (ctx) => {
+
+    await ctx.answerCbQuery("Preparing to serve your request");
 
     const userId = ctx.from.id;
 
@@ -1268,6 +1365,8 @@ bot.action("EXACTINPUT", async (ctx) => {
 
 bot.action("EXACTOUTPUT", async (ctx) => {
 
+    await ctx.answerCbQuery("Preparing to serve your request");
+
     const userId = ctx.from.id;
 
     const session = await getSession(userId);
@@ -1289,6 +1388,8 @@ bot.action("EXACTOUTPUT", async (ctx) => {
 });
 
 bot.action("TOKENX", async (ctx) => {
+
+    await ctx.answerCbQuery("Preparing to serve your request");
 
     const userId = ctx.from.id;
 
@@ -1313,6 +1414,8 @@ bot.action("TOKENX", async (ctx) => {
 
 
 bot.action("TOKENY", async (ctx) => {
+
+    await ctx.answerCbQuery("Preparing to serve your request");
 
     const userId = ctx.from.id;
 
@@ -1443,7 +1546,7 @@ bot.action("SHOW_LAUNCHED_TOKENS", async (ctx) => {
 
     for(const token of tokens) {
 
-        reply += `${idx}) Token Name: ${token.name} Token Symbol: ${token.symbol} Token Decimals: ${token.decimals} Token Mint Address: ${token.mintAddress}\n\n`
+        reply += `${idx}) Token Name: ${token.name}\n Token Symbol: ${token.symbol}\n Token Decimals: ${token.decimals}\n Token Mint Address: ${token.mintAddress}\n\n`
     
         idx++;
     }
@@ -1467,7 +1570,7 @@ bot.action("SHOW_MINTED_TOKENS", async (ctx) => {
 
     for(const token of tokens) {
 
-        reply += `${idx}) Token Name: ${token.name} Token Symbol: ${token.symbol} Token Decimals: ${token.decimals} Token Mint Address: ${token.mintAddress}\n\n`
+        reply += `${idx}) Token Name: ${token.name}\n Token Symbol: ${token.symbol}\n Token Decimals: ${token.decimals}\n Token Mint Address: ${token.mintAddress}\n\n`
         
         idx++;
     }
@@ -1527,6 +1630,8 @@ bot.action("ADD_LIQUIDITY", async (ctx) => {
 
 bot.action("SPOT", async (ctx) => {
 
+    await ctx.answerCbQuery("Preparing to serve your request");
+
     const userId = ctx.from.id;
 
     const session = await getSession(userId);
@@ -1556,6 +1661,8 @@ bot.action("SPOT", async (ctx) => {
 
 bot.action("CURVE", async (ctx) => {
 
+    await ctx.answerCbQuery("Preparing to serve your request");
+
     const userId = ctx.from.id;
 
     const session = await getSession(userId);
@@ -1584,6 +1691,8 @@ bot.action("CURVE", async (ctx) => {
 });
 
 bot.action("BIDASK", async (ctx) => {
+
+    await ctx.answerCbQuery("Preparing to serve your request");
 
     const userId = ctx.from.id;
 
@@ -1627,6 +1736,54 @@ bot.action("CREATE_POOL", async (ctx) => {
         { parse_mode: "Markdown", ...getBackHomeKeyboard}
     );
 
+});
+
+bot.action("FIND_POOL", async (ctx) => {
+
+    await ctx.answerCbQuery("Finding pool for you...");
+
+    const userId = ctx.from.id;
+
+    await setFindPoolStateStep1(userId);
+
+    return ctx.reply(
+        
+        "Do you want to specify only one token or both tokens of the pool?",
+
+        { parse_mode: "Markdown", ...findPoolKeyboard}
+    );
+});
+
+bot.action("1MINT", async (ctx) => {
+
+    ctx.answerCbQuery("Preparing to find pools for you...");
+
+    const userId = ctx.from.id;
+
+    await setFindPoolStateStep2(userId, "1");
+
+    return ctx.reply(
+        
+        "Please enter the mint address of the token.",
+
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
+});
+
+bot.action("2MINT", async (ctx) => {
+
+    ctx.answerCbQuery("Preparing to find pools for you...");
+
+    const userId = ctx.from.id;
+
+    await setFindPoolStateStep2(userId, "2");
+
+    return ctx.reply(
+        
+        "Please enter the mint address of the first token.",
+
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
 });
 
 bot.action("CREATE_POSITION", async (ctx) => {
