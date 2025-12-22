@@ -89,7 +89,7 @@ import {
     setTokenTransferStateStep3, setTokenTransferStateComplete }
 from "./state/setTokenTransferState.js";
 import { buildTokenTransferTransaction } from "../services/buildTransferTokenTransaction.js";
-import { setCloseAllPositionsForPoolComplete } from "./state/setCloseAllPositionsForPoolState.js";
+import { setCloseAllPositionsForPoolComplete, setCloseAllPositionsForPoolStep1 } from "./state/setCloseAllPositionsForPoolState.js";
 import { buildCloseAllPositionsForPoolTransaction }
 from "../services/buildCloseAllPositionsForPoolTransaction.js";
 
@@ -1606,6 +1606,8 @@ bot.action("CLOSE_POSITIONS_POOL", async (ctx) => {
     await ctx.answerCbQuery("Preparing to close all positions.");
 
     const userId = ctx.from.id;
+    
+    await setCloseAllPositionsForPoolStep1(userId);
 
     ctx.reply("Please enter the pool address for which you want to close all positions.",
 
