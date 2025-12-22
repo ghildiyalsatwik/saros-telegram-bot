@@ -74,3 +74,16 @@ export async function deletePositionFromDb(userId: number, positionMint: string)
         }
     })
 }
+
+export async function getPositionsFromPair(pair: string) {
+
+    const positions = prisma.createdPosition.findMany({
+
+        where: {
+
+            pairAddress: pair
+        }
+    });
+
+    return positions;
+}

@@ -55,7 +55,7 @@ export const homeKeyboard = Markup.inlineKeyboard([
     ],
 
     [
-        Markup.button.callback("Close all DLMM Positions for Pool", "CREATE_POSITIONS_POOL"),
+        Markup.button.callback("Close all DLMM Positions for Pool", "CLOSE_POSITIONS_POOL"),
     ],
 
     [
