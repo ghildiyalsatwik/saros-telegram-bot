@@ -13,7 +13,7 @@ import {
 from "./ui/keyboards.js";
 import { 
     setSolTransferStateAddress, setSolTransferStateAmount,
-    setSolTransferComplete }
+    setSolTransferStateComplete }
     from "./state/solTransferState.js";
 import { setHomeState } from "./state/setHomeState.js";
 import { isValidSolanaAddress } from "../utils/validSolanaAddress.js";
@@ -30,7 +30,11 @@ from "./state/launchTokenState.js";
 import { buildLaunchTokenTransaction } from "../services/buildLaunchTokenTransaction.js";
 import { signLaunchTokenTransaction } from "../services/signLaunchTokenTransaction.js";
 import { sendLaunchTokenTransaction } from "../services/sendLaunchTokenTransaction.js";
-import { createTokenInDb, getTokenByMintAddressAndUser } from "../db/token.js";
+import { 
+    createTokenInDb, getTokenByMintAddressAndUser,
+    getTokensByUser, createMintedTokenInDb,
+    getTokenByMintAddress, getMintedTokensByUser }
+from "../db/token.js";
 import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { signTransaction } from "../services/signTransaction.js";
 import { 
@@ -69,7 +73,8 @@ import { getTokenDecimalsFromPositionMint } from "../utils/getTokenDecimalsFromP
 import { buildAddLiquidityTransaction } from "../services/buildAddLiquidityTransaction.js";
 import { setClosePositionStateStep1, setClosePositionStateComplete } from "./state/setClosePositionState.js";
 import { buildClosePositionTransactions } from "../services/buildClosePositionTransactions.js";
-import { setRemoveLiquidityStateComplete, setRemoveLiquidityStateStep2 } from "./state/setRemoveLiquidityState.js";
+import { setRemoveLiquidityStateComplete, setRemoveLiquidityStateStep2 }
+from "./state/setRemoveLiquidityState.js";
 import { buildRemoveLiquidityTransactions } from "../services/buildRemoveLiquidityTransactions.js";
 import { RemoveLiquidityType } from "@saros-finance/dlmm-sdk";
 import { setClaimRewardStateStep1, setClaimRewardStateComplete } from "./state/setClaimRewardState.js";
@@ -89,9 +94,11 @@ import {
     setTokenTransferStateStep3, setTokenTransferStateComplete }
 from "./state/setTokenTransferState.js";
 import { buildTokenTransferTransaction } from "../services/buildTransferTokenTransaction.js";
-import { setCloseAllPositionsForPoolComplete, setCloseAllPositionsForPoolStep1 } from "./state/setCloseAllPositionsForPoolState.js";
+import { setCloseAllPositionsForPoolComplete, setCloseAllPositionsForPoolStep1 }
+from "./state/setCloseAllPositionsForPoolState.js";
 import { buildCloseAllPositionsForPoolTransaction }
 from "../services/buildCloseAllPositionsForPoolTransaction.js";
+import { mintedTokenExistsForUser } from "../utils/mintedTokenExistsForUser.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
@@ -221,7 +228,7 @@ bot.on(message("text"), async (ctx) => {
 
             const parsedParams = JSON.parse(params);
 
-            await setSolTransferComplete(userId, parsedParams.to, amount);
+            await setSolTransferStateComplete(userId, parsedParams.to, amount);
 
             return ctx.reply(
         
@@ -1206,7 +1213,9 @@ bot.action("RECEIVEX", async (ctx) => {
 
     return ctx.reply(
         
-        "Got it, you want to receive token X. Do you want to specify exact input token Y amount or exact output token X amount?",
+        `Got it, you want to receive token X.
+        
+        Do you want to specify exact input token Y amount or exact output token X amount?`,
 
         { parse_mode: "Markdown", ...sarosDLMMSwapExactAmountKeyboard}
     );
@@ -1226,7 +1235,9 @@ bot.action("RECEIVEY", async (ctx) => {
 
     return ctx.reply(
         
-        "Got it, you want to receive token Y. Do you want to specify exact input token X amount or exact output token Y amount?",
+        `Got it, you want to receive token Y.
+        
+        Do you want to specify exact input token X amount or exact output token Y amount?`,
 
         { parse_mode: "Markdown", ...sarosDLMMSwapExactAmountKeyboard}
     );
@@ -1414,6 +1425,54 @@ bot.action("LAUNCH_TOKEN", async (ctx) => {
     
     );
 
+});
+
+bot.action("SHOW_LAUNCHED_TOKENS", async (ctx) => {
+
+    await ctx.answerCbQuery("Fetching all your launched tokens...");
+
+    const userId = ctx.from.id;
+
+    const tokens = await getTokensByUser(userId);
+
+    if(tokens.length === 0) return ctx.reply("You do not have any launched tokens.", homeKeyboard);
+
+    let idx = 1;
+
+    let reply = `All your launched tokens:\n\n`;
+
+    for(const token of tokens) {
+
+        reply += `${idx}) Token Name: ${token.name} Token Symbol: ${token.symbol} Token Decimals: ${token.decimals} Token Mint Address: ${token.mintAddress}\n\n`
+    
+        idx++;
+    }
+
+    return ctx.reply(reply, homeKeyboard);
+});
+
+bot.action("SHOW_MINTED_TOKENS", async (ctx) => {
+
+    await ctx.answerCbQuery("Fetching all your minted tokens...");
+
+    const userId = ctx.from.id;
+
+    const tokens = await getMintedTokensByUser(userId);
+
+    if(tokens.length === 0) return ctx.reply("You do not have any minted tokens.", homeKeyboard);
+
+    let idx = 1;
+
+    let reply = `All your minted tokens:\n\n`;
+
+    for(const token of tokens) {
+
+        reply += `${idx}) Token Name: ${token.name} Token Symbol: ${token.symbol} Token Decimals: ${token.decimals} Token Mint Address: ${token.mintAddress}\n\n`
+        
+        idx++;
+    }
+
+    return ctx.reply(reply, homeKeyboard);
 });
 
 bot.action("SOL_BALANCE", async (ctx) => {
@@ -1771,7 +1830,9 @@ bot.action("EXECUTE", async(ctx) => {
 
         return ctx.reply(
         
-            `Your transaction is confirmed!\n${name} has been launched at address: ${mintAddress}.\nTransaction Signature: ${sig}`,
+            `Your transaction is confirmed!\n${name} has been launched at address: ${mintAddress}.
+            
+            \nTransaction Signature: ${sig}`,
     
             { parse_mode: "Markdown", ...homeKeyboard}
         );
@@ -1812,11 +1873,28 @@ bot.action("EXECUTE", async(ctx) => {
             );
         }
 
+        const exists = await mintedTokenExistsForUser(userId, mintAddress);
+
+        if(!exists) {
+
+            const tok = await getTokenByMintAddress(mintAddress);
+
+            const name = tok?.name!;
+
+            const symbol = tok!.symbol!;
+
+            const tokenProgram = tok?.tokenProgram!;
+
+            await createMintedTokenInDb(userId, name, symbol, decimals, mintAddress, tokenProgram);
+        }
+
         await setHomeState(userId);
 
         return ctx.reply(
         
-            `Your transaction is confirmed!\n${amount} ${mintAddress} have been minted to: ${to}.\nTransaction Signature: ${sig}`,
+            `Your transaction is confirmed!\n${amount} ${mintAddress} have been minted to: ${to}.
+            
+            \nTransaction Signature: ${sig}`,
     
             { parse_mode: "Markdown", ...homeKeyboard}
         );
@@ -1915,7 +1993,9 @@ bot.action("EXECUTE", async(ctx) => {
 
         return ctx.reply(
         
-            `Your transaction is confirmed!\nPosition created at ${positionMintPubKey}.\nTransaction Signature: ${sig}.`,
+            `Your transaction is confirmed!\nPosition created at ${positionMintPubKey}.
+            
+            \nTransaction Signature: ${sig}.`,
     
             { parse_mode: "Markdown", ...homeKeyboard}
         );
@@ -2205,7 +2285,9 @@ bot.action("EXECUTE", async(ctx) => {
 
         return ctx.reply(
         
-            `Your transaction is confirmed!\nReward has been claimed for position: ${positionMint} from pool: ${pair}.\nRewards available at ${rewardTokenMint}.\nTransaction Signature: ${sig}.`,
+            `Your transaction is confirmed!\nReward has been claimed for position: ${positionMint}
+            
+            from pool: ${pair}.\nRewards available at ${rewardTokenMint}.\nTransaction Signature: ${sig}.`,
     
             { parse_mode: "Markdown", ...homeKeyboard}
         );

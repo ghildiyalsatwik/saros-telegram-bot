@@ -26,7 +26,7 @@ export async function setSolTransferStateAmount(userId: number, address: string)
     });
 }
 
-export async function setSolTransferComplete(userId: number, to: string, amount: string) {
+export async function setSolTransferStateComplete(userId: number, to: string, amount: string) {
 
     await redis.hSet(`tg:session:${userId}`, {
 
