@@ -24,3 +24,22 @@ export interface CreatePoolInDbParams {
 
     ratePrice: number
 }
+
+export interface buildCreateAMMPoolTransactionParams {
+
+    pubkey: string,
+
+    token1: string,
+
+    token2: string,
+
+    amount1: number,
+
+    amount2: number,
+
+    decimals1: number,
+
+    decimals2: number,
+
+    curveType: string
+}

@@ -10,6 +10,6 @@ export default defineConfig({
     include: ["@coral-xyz/anchor"],
   },
   ssr: {
-    noExternal: ["@coral-xyz/anchor", "@saros-finance/dlmm-sdk"],
+    noExternal: ["@coral-xyz/anchor", "@saros-finance/dlmm-sdk", "@saros-finance/saros-sdk"],
   }
 });

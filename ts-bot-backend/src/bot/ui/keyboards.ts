@@ -76,6 +76,10 @@ export const homeKeyboard = Markup.inlineKeyboard([
         Markup.button.callback("View All Positions", "VIEW_POSITION"),
 
         Markup.button.callback("Claim Reward", "CLAIM_REWARD")
+    ],
+
+    [
+        Markup.button.callback("Create AMM Pool", "CREATE_AMM_POOL")
     ]
 
 ]);
@@ -154,6 +158,25 @@ export const findPoolKeyboard = Markup.inlineKeyboard([
         Markup.button.callback("1 Token Address", "1MINT"),
 
         Markup.button.callback("2 Token Addresses", "2MINT")
+    ],
+
+    [
+        Markup.button.callback("Go back Home", "HOME")
+    ]
+]);
+
+export const chooseAMMCurveKeyboard = Markup.inlineKeyboard([
+
+    [   
+        Markup.button.callback("Constant Product", "CONSTANTPROD"),
+
+        Markup.button.callback("Constant Price", "CONSTANTPRICE"),
+    ],
+
+    [
+        Markup.button.callback("Stable", "STABLE"),
+
+        Markup.button.callback("Offset", "OFFSET"),
     ],
 
     [

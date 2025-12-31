@@ -35,6 +35,7 @@
     "dotenv": "^17.2.3",
     "lodash-es": "^4.17.22",
     "redis": "^5.10.0",
-    "telegraf": "^4.16.3"
+    "telegraf": "^4.16.3",
+    "@saros-finance/saros-sdk": "https://github.com/saros-xyz/saros-sdk/archive/f9a5b9619125fdb6b45284f890c9dabc58694a38.tar.gz"
   }
 }

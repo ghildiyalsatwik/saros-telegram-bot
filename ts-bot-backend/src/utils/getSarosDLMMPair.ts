@@ -4,7 +4,7 @@ import { PublicKey } from "@solana/web3.js";
 
 export function getSarosDLLMPair(pair: string) {
 
-    return new SarosDLMMPair(
+    const sarosDLMMPair = new SarosDLMMPair(
 
         {
             mode: MODE.DEVNET,
@@ -14,4 +14,6 @@ export function getSarosDLLMPair(pair: string) {
 
         new PublicKey(pair)
     );
+
+    return sarosDLMMPair;
 }

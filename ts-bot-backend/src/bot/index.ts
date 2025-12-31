@@ -9,7 +9,8 @@ import { createUserWallet } from "../services/createWallet.js";
 import { 
     homeKeyboard, createWalletKeyboard, getBackHomeKeyboard, executeTransactionKeyboard,
     liquidityShapesKeyboard, removeLiquiditykeyboard,
-    sarosDLMMSwapReceiveKeyboard, sarosDLMMSwapExactAmountKeyboard, findPoolKeyboard }
+    sarosDLMMSwapReceiveKeyboard, sarosDLMMSwapExactAmountKeyboard, findPoolKeyboard,
+    chooseAMMCurveKeyboard }
 from "./ui/keyboards.js";
 import { 
     setSolTransferStateAddress, setSolTransferStateAmount,
@@ -101,7 +102,13 @@ from "../services/buildCloseAllPositionsForPoolTransaction.js";
 import { mintedTokenExistsForUser } from "../utils/mintedTokenExistsForUser.js";
 import { setFindPoolStateComplete, setFindPoolStateStep1, setFindPoolStateStep2 } from "./state/setFindPoolState.js";
 import { findPoolsByTokens } from "../services/findPoolsByTokens.js";
-import { setgroups } from "node:process";
+import { setCreateAMMPoolStateStep1, setCreateAMMPoolStateStep2,
+    setCreateAMMPoolStateStep3, setCreateAMMPoolStateStep4,
+    setCreateAMMPoolStateStep5, setCreateAMMPoolStateComplete }
+from "./state/setCreateAMMPoolState.js";
+import { buildCreateAMMPoolTransaction } from "../services/buildCreateAMMPoolTransaction.js";
+import { signCreateAMMPoolTransaction } from "../services/signCreateAMMPoolTransaction.js";
+import { sendCreateAMMPoolTransaction } from "../services/sendCreateAMMPoolTransaction.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
@@ -739,7 +746,6 @@ bot.on(message("text"), async (ctx) => {
 
         }
 
-
         if(session.step === "3") {
 
             const amountY = ctx.message.text;
@@ -1284,6 +1290,117 @@ bot.on(message("text"), async (ctx) => {
         }
     }
 
+    if(session.action === "CREATE_AMM_POOL") {
+
+        if(session.step === "1") {
+
+            const token1 = ctx.message.text;
+
+            if(!isValidSolanaAddress(token1)) {
+                
+                return ctx.reply("Please enter a valid Solana address.",
+
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard }
+                );
+            }
+
+            await setCreateAMMPoolStateStep2(userId, token1);
+
+            return ctx.reply("Address of the first token received. Please enter mint address of the second token.",
+
+                { parse_mode: "Markdown", ...getBackHomeKeyboard }
+            );
+        }
+
+        if(session.step === "2") {
+
+            const token2 = ctx.message.text;
+
+            if(!isValidSolanaAddress(token2)) {
+                
+                return ctx.reply("Please enter a valid Solana address.",
+
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard }
+                );
+            }
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const token1 = parsedParams.token1;
+
+            if(token1 === token2) {
+
+                return ctx.reply("Please enter a Solana address different from the first.",
+
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard }
+                );
+            }
+            
+            await setCreateAMMPoolStateStep3(userId, token1, token2);
+
+            return ctx.reply("Please enter the initial amount of token1 you want to deposit into the pool.", 
+
+                { parse_mode: "Markdown", ...getBackHomeKeyboard}
+            )
+
+        }
+
+        if(session.step === "3") {
+
+            const amount1 = ctx.message.text;
+
+            if(!isAmountValid(amount1)) {
+
+                return ctx.reply("Please enter a valid amount", 
+
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard }
+                )
+            }
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const token1 = parsedParams.token1;
+
+            const token2 = parsedParams.token2;
+
+            await setCreateAMMPoolStateStep4(userId, token1, token2, amount1);
+
+            return ctx.reply("Please enter the initial amount of token2 you want to deposit into the pool.", 
+
+                { parse_mode: "Markdown", ...getBackHomeKeyboard}
+            )
+
+        }
+
+        if(session.step === "4") {
+            
+            const amount2 = ctx.message.text;
+
+            if(!isAmountValid(amount2)) {
+
+                return ctx.reply("Please enter a valid amount", 
+
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard }
+                )
+            }
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const token1 = parsedParams.token1;
+
+            const token2 = parsedParams.token2;
+
+            const amount1 = parsedParams.amount1;
+
+            await setCreateAMMPoolStateStep5(userId, token1, token2, amount1, amount2);
+
+            return ctx.reply("Please choose the desired curve type", 
+
+                { parse_mode: "Markdown", ...chooseAMMCurveKeyboard}
+            );
+        }
+    }
+
     await setHomeState(userId);
 
     return ctx.reply(getDefaultMessage(), homeKeyboard);
@@ -1736,6 +1853,126 @@ bot.action("CREATE_POOL", async (ctx) => {
         { parse_mode: "Markdown", ...getBackHomeKeyboard}
     );
 
+});
+
+bot.action("CREATE_AMM_POOL", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    await ctx.answerCbQuery("Preparing to create Saros AMM pool for you.");
+
+    await setCreateAMMPoolStateStep1(userId);
+
+    return ctx.reply("Please enter the mint address of the first token of the pair.",
+        
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
+
+});
+
+bot.action("CONSTANTPROD", async (ctx) => {
+
+    ctx.answerCbQuery("Preparing to create AMM pool...");
+
+    const userId = ctx.from.id;
+
+    const session = await getSession(userId);
+
+    const parsedParams = JSON.parse(session!.params!);
+
+    const token1 = parsedParams.token1;
+
+    const token2 = parsedParams.token2;
+
+    const amount1 = parsedParams.amount1;
+
+    const amount2 = parsedParams.amount2;
+
+    await setCreateAMMPoolStateComplete(userId, token1, token2, amount1, amount2, "CONSTANTPROD");
+
+    return ctx.reply("Press execute to confirm transaction",
+        
+        { parse_mode: "Markdown", ...executeTransactionKeyboard }
+    );
+
+});
+
+bot.action("CONSTANTPRICE", async (ctx) => {
+
+    ctx.answerCbQuery("Preparing to create AMM pool...");
+
+    const userId = ctx.from.id;
+
+    const session = await getSession(userId);
+
+    const parsedParams = JSON.parse(session!.params!);
+
+    const token1 = parsedParams.token1;
+
+    const token2 = parsedParams.token2;
+
+    const amount1 = parsedParams.amount1;
+
+    const amount2 = parsedParams.amount2;
+
+    await setCreateAMMPoolStateComplete(userId, token1, token2, amount1, amount2, "CONSTANTPRICE");
+
+    return ctx.reply("Press execute to confirm transaction",
+        
+        { parse_mode: "Markdown", ...executeTransactionKeyboard }
+    );
+});
+
+bot.action("STABLE", async (ctx) => {
+
+    ctx.answerCbQuery("Preparing to create AMM pool...");
+
+    const userId = ctx.from.id;
+
+    const session = await getSession(userId);
+
+    const parsedParams = JSON.parse(session!.params!);
+
+    const token1 = parsedParams.token1;
+
+    const token2 = parsedParams.token2;
+
+    const amount1 = parsedParams.amount1;
+
+    const amount2 = parsedParams.amount2;
+
+    await setCreateAMMPoolStateComplete(userId, token1, token2, amount1, amount2, "STABLE");
+
+    return ctx.reply("Press execute to confirm transaction",
+        
+        { parse_mode: "Markdown", ...executeTransactionKeyboard }
+    );
+});
+
+bot.action("OFFSET", async (ctx) => {
+
+    ctx.answerCbQuery("Preparing to create AMM pool...");
+
+    const userId = ctx.from.id;
+
+    const session = await getSession(userId);
+
+    const parsedParams = JSON.parse(session!.params!);
+
+    const token1 = parsedParams.token1;
+
+    const token2 = parsedParams.token2;
+
+    const amount1 = parsedParams.amount1;
+
+    const amount2 = parsedParams.amount2;
+
+    await setCreateAMMPoolStateComplete(userId, token1, token2, amount1, amount2, "OFFSET");
+
+    return ctx.reply("Press execute to confirm transaction",
+        
+        { parse_mode: "Markdown", ...executeTransactionKeyboard }
+    );
 });
 
 bot.action("FIND_POOL", async (ctx) => {
@@ -2630,6 +2867,60 @@ bot.action("EXECUTE", async(ctx) => {
             { parse_mode: "Markdown", ...homeKeyboard}
         );
 
+    }
+
+    if(session!.action === "CREATE_AMM_POOL") {
+
+        const parsedParams = JSON.parse(session?.params!);
+
+        const token1 = parsedParams.token1;
+
+        const token2 = parsedParams.token2;
+
+        const amount1 = parsedParams.amount1;
+
+        const amount2 = parsedParams.amount2;
+
+        const curveType = parsedParams.curveType;
+
+        const decimals1 = await getTokenDecimals(token1);
+
+        const decimals2 = await getTokenDecimals(token2);
+
+        const pubkey = session?.publicKey!;
+
+        const createAMMPoolRes = await buildCreateAMMPoolTransaction({pubkey, token1, token2, amount1, amount2, decimals1, decimals2, curveType});
+
+        const tx = createAMMPoolRes.transaction;
+
+        const signers = createAMMPoolRes.signers;
+
+        const signedTx = await signCreateAMMPoolTransaction(tx, signers, userId);
+
+        const {sig, failed} = await sendCreateAMMPoolTransaction(signedTx, signers, userId);
+
+        if(failed) {
+
+            await setHomeState(userId);
+
+            return ctx.reply(
+        
+                `Your transaction failed. Please try again.`,
+        
+                { parse_mode: "Markdown", ...homeKeyboard}
+            );
+        }
+
+        await setHomeState(userId);
+
+        return ctx.reply(
+        
+            `Your transaction is confirmed!\nPool created!.
+            
+            \nTransaction Signature: ${sig}.`,
+    
+            { parse_mode: "Markdown", ...homeKeyboard}
+        );
     }
 });
 
