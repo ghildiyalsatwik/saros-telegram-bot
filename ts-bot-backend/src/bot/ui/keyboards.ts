@@ -17,9 +17,15 @@ export const homeKeyboard = Markup.inlineKeyboard([
     ],
 
     [
-        Markup.button.callback("Launch Token", "LAUNCH_TOKEN"),
+        Markup.button.callback("Launch Token 2022", "LAUNCH_TOKEN"),
 
-        Markup.button.callback("Mint Tokens", "MINT_TOKENS")
+        Markup.button.callback("Mint Token 2022", "MINT_TOKENS")
+    ],
+
+    [
+        Markup.button.callback("Launch SPL-Token", "LAUNCH_SPL_TOKEN"),
+
+        Markup.button.callback("Mint SPL-Token", "MINT_SPL_TOKENS")
     ],
 
     [

@@ -1,4 +1,4 @@
-import { Keypair } from "@solana/web3.js";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
 import { devnetConnection } from "../utils/connections.js";
 import { beforeAll, describe, it } from "vitest";
@@ -22,9 +22,17 @@ describe("Testing AMM pool creation", () => {
 
     it("testing AMM pool creation", async () => {
 
-        const token1 = "So11111111111111111111111111111111111111112";
+        const token1 = "56pNF8HPNCppa5uW34zRyMBQdVdY68SNuhVM5TfVdn2d";
 
-        const token2 = "56pNF8HPNCppa5uW34zRyMBQdVdY68SNuhVM5TfVdn2d";
+        const mintInfo1 = await devnetConnection.getAccountInfo(new PublicKey(token1));
+
+        console.log(mintInfo1?.owner.toBase58());
+
+        const token2 = "So11111111111111111111111111111111111111112";
+
+        const mintInfo2 = await devnetConnection.getAccountInfo(new PublicKey(token2));
+
+        console.log(mintInfo2?.owner.toBase58());
 
         const decimals1 = 9;
 
@@ -62,4 +70,5 @@ describe("Testing AMM pool creation", () => {
         console.log(`Transaction successfull!\nTransaction signature: ${sig}`);
 
     }, 30000);
+
 });

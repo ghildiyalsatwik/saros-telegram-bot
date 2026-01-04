@@ -109,6 +109,13 @@ from "./state/setCreateAMMPoolState.js";
 import { buildCreateAMMPoolTransaction } from "../services/buildCreateAMMPoolTransaction.js";
 import { signCreateAMMPoolTransaction } from "../services/signCreateAMMPoolTransaction.js";
 import { sendCreateAMMPoolTransaction } from "../services/sendCreateAMMPoolTransaction.js";
+import { 
+    setLaunchSPLTokenStateStep1, setLaunchSPLTokenStateStep2, 
+    setLaunchSPLTokenStateStep3, setLaunchSPLTokenStateStep4 }
+from "./state/setLaunchSPLTokenState.js";
+import { signLaunchSPLTokenTransaction } from "../services/signLaunchSPLTokenTransaction.js";
+import { buildLaunchSPLTokenTransaction } from "../services/buildLaunchSPLTokenTransaction.js";
+import { sendLaunchSPLTokenTransaction } from "../services/sendLaunchSPLTokenTransaction.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
@@ -292,6 +299,60 @@ bot.on(message("text"), async (ctx) => {
             const ticker = parsedParams.ticker;
 
             await setLaunchTokenStateStep4(userId, name, ticker, decimals);
+
+            return ctx.reply(
+        
+                "Press execute to confirm transaction and launch token.",
+        
+                { parse_mode: "Markdown", ...executeTransactionKeyboard}
+            );
+
+        }
+
+    }
+
+    if(session.action === "LAUNCH_SPL_TOKEN") {
+
+        if(session.step === "1") {
+
+            const name = ctx.message.text;
+
+            await setLaunchSPLTokenStateStep2(userId, name);
+
+            return ctx.reply("Received token name.\nNow please enter the token ticker.", 
+                    
+                { parse_mode: "Markdown", ...getBackHomeKeyboard}
+            )
+        }
+
+        if(session.step === "2") {
+
+            const ticker = ctx.message.text;
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const name = parsedParams.name;
+
+            await setLaunchSPLTokenStateStep3(userId, name, ticker);
+
+            return ctx.reply("Received token ticker.\nNow please enter the number of token decimals.", 
+                    
+                { parse_mode: "Markdown", ...getBackHomeKeyboard}
+            )
+
+        }
+
+        if(session.step === "3") {
+
+            const decimals = ctx.message.text;
+
+            const parsedParams = JSON.parse(session.params!);
+
+            const name = parsedParams.name;
+
+            const ticker = parsedParams.ticker;
+
+            await setLaunchSPLTokenStateStep4(userId, name, ticker, decimals);
 
             return ctx.reply(
         
@@ -1647,6 +1708,21 @@ bot.action("LAUNCH_TOKEN", async (ctx) => {
 
 });
 
+bot.action("LAUNCH_SPL_TOKEN", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    await ctx.answerCbQuery("Preparing to launch SPL token.");
+
+    await setLaunchSPLTokenStateStep1(userId);
+
+    return ctx.reply("Please enter the name for your new token.",
+        
+        {parse_mode: "Markdown", ...getBackHomeKeyboard}
+    
+    );
+});
+
 bot.action("SHOW_LAUNCHED_TOKENS", async (ctx) => {
 
     await ctx.answerCbQuery("Fetching all your launched tokens...");
@@ -2231,6 +2307,51 @@ bot.action("EXECUTE", async(ctx) => {
             { parse_mode: "Markdown", ...homeKeyboard}
         );
 
+    }
+
+    if(session?.action === "LAUNCH_SPL_TOKEN") {
+
+        const userPubKey = session?.publicKey!;
+
+        const params = session?.params!;
+
+        const parsedParams = JSON.parse(params);
+
+        const name = parsedParams.name;
+
+        const ticker = parsedParams.ticker;
+
+        const decimals = parsedParams.decimals;
+
+        const { tx, mintKeypair, uri } = await buildLaunchSPLTokenTransaction(userPubKey, name, ticker, parseInt(decimals), userId);
+    
+        const txSigned = await signLaunchSPLTokenTransaction(tx, mintKeypair, userId);
+
+        const {sig, failed} = await sendLaunchSPLTokenTransaction(userId, txSigned, mintKeypair, name, ticker, uri);
+
+        if(failed) {
+
+            await setHomeState(userId);
+
+            return ctx.reply(
+        
+                `Your transaction failed. Please try again.`,
+        
+                { parse_mode: "Markdown", ...homeKeyboard}
+            );
+        }
+
+        await setHomeState(userId);
+
+        return ctx.reply(
+        
+            `Your transaction is confirmed!\n${name} has been launched at address: ${mintKeypair.publicKey.toBase58()}.
+            
+            \nTransaction Signature: ${sig}`,
+    
+            { parse_mode: "Markdown", ...homeKeyboard}
+        );
+    
     }
 
     if(session!.action! === "MINT_TOKENS") {
