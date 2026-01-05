@@ -54,5 +54,4 @@ export const buildLaunchSPLTokenTransaction = async (pubkey: string, name: strin
     );
 
     return { tx, mintKeypair, uri };
-
 };

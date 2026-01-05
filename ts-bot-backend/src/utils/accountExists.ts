@@ -14,5 +14,4 @@ export async function accountExists(pubkey: PublicKey) {
     }
 
     return true;
-
 }

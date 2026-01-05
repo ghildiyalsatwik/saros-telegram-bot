@@ -24,6 +24,8 @@ model User {
   CreatedPools        CreatedPool[] @relation("UserCreatedPools")
   CreatedPositions    CreatedPosition[]
   MintedTokens        MintedToken[] @relation("UserMintedTokens")
+  LaunchedSPLTokens      LaunchedSPLToken[] @relation("UserLaunchedSPLTokens")
+  MintedSPLTokens        MintedSPLToken[] @relation("UserMintedSPLTokens")
 
 }
 
@@ -41,6 +43,20 @@ model LaunchedToken {
   @@unique([telegramId, name])
 }
 
+model LaunchedSPLToken {
+  id           String   @id @default(cuid())
+  telegramId   BigInt
+  mintAddress  String   @unique
+  name         String
+  symbol       String
+  decimals     Int
+  tokenProgram String
+
+  user         User     @relation("UserLaunchedSPLTokens", fields: [telegramId], references: [telegramId])
+
+  @@unique([telegramId, name])
+}
+
 model MintedToken {
 
   id            String    @id @default(cuid())
@@ -52,6 +68,21 @@ model MintedToken {
   tokenProgram  String
 
   user         User     @relation("UserMintedTokens", fields: [telegramId], references: [telegramId])
+
+  @@unique([telegramId, name]) 
+}
+
+model MintedSPLToken {
+
+  id            String    @id @default(cuid())
+  telegramId    BigInt
+  mintAddress   String    @unique
+  name          String
+  symbol        String
+  decimals      Int
+  tokenProgram  String
+
+  user         User     @relation("UserMintedSPLTokens", fields: [telegramId], references: [telegramId])
 
   @@unique([telegramId, name]) 
 }
