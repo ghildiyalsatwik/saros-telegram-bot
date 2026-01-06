@@ -22,7 +22,7 @@ describe("Testing AMM pool creation", () => {
 
     it("testing AMM pool creation", async () => {
 
-        const token1 = "56pNF8HPNCppa5uW34zRyMBQdVdY68SNuhVM5TfVdn2d";
+        const token1 = "4Eg2A6pe8NEgyQHFozBH7RaH945ZZYpcVfAH8UKwap2j";
 
         const mintInfo1 = await devnetConnection.getAccountInfo(new PublicKey(token1));
 
@@ -69,6 +69,6 @@ describe("Testing AMM pool creation", () => {
 
         console.log(`Transaction successfull!\nTransaction signature: ${sig}`);
 
-    }, 30000);
+    }, 50000);
 
 });

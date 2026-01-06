@@ -3,7 +3,7 @@ import { Keypair } from "@solana/web3.js";
 import bs58 from "bs58";
 import { beforeAll, describe, it } from "vitest";
 import { sendAndConfirmTransaction } from "@solana/web3.js";
-import { buildMintTokenTransaction } from "../services/buildMintTokenTransaction.js";
+import { buildMintSPLTokenTransaction } from "../services/buildMintSPLTokenTransaction.js";
 
 let wallet: Keypair;
 let pubkey: string;
@@ -23,11 +23,11 @@ describe("Testing token mint", () => {
 
     it("testing token mint", async () => {
 
-        const tx = await buildMintTokenTransaction(
+        const tx = await buildMintSPLTokenTransaction(
             
             pubkey, 
             
-            "56pNF8HPNCppa5uW34zRyMBQdVdY68SNuhVM5TfVdn2d",
+            "4Eg2A6pe8NEgyQHFozBH7RaH945ZZYpcVfAH8UKwap2j",
             
             "D6cjkmS61Ar8UGFCCsq7QSH8y35WWy28vwYAJKNK6EXC",
 
@@ -51,6 +51,6 @@ describe("Testing token mint", () => {
 
         console.log(`Transaction succeeded.\nSignature: ${sig}`);
 
-    }, 20000);
+    }, 3000);
 
 });
