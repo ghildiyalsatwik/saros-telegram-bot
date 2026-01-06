@@ -26,7 +26,7 @@ describe("Testing SPL token launch", () => {
 
     it("testing SPL token launch", async () => {
 
-        const { tx, mintKeypair, uri } = await buildLaunchSPLTokenTransaction(pubkey, "COSMOSSPL2", "CPL", 9, 1);
+        const { tx, mintKeypair, uri } = await buildLaunchSPLTokenTransaction(pubkey, "COSMOSSPL3", "CPL", 9, 1);
 
         let sig;
 
@@ -63,7 +63,7 @@ describe("Testing SPL token launch", () => {
         
             data: {
             
-                name: "COSMOSSPL2",
+                name: "COSMOSSPL3",
             
                 symbol: "CPL",
             

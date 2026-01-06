@@ -27,7 +27,7 @@ describe("Testing token mint", () => {
             
             pubkey, 
             
-            "4Eg2A6pe8NEgyQHFozBH7RaH945ZZYpcVfAH8UKwap2j",
+            "5LRas81UFd6nFELj5Mm6KdXe6QXQLCsCpuM3LoWAjY1n",
             
             "D6cjkmS61Ar8UGFCCsq7QSH8y35WWy28vwYAJKNK6EXC",
 

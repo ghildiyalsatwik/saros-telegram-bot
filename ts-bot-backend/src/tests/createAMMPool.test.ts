@@ -28,7 +28,7 @@ describe("Testing AMM pool creation", () => {
 
         console.log(mintInfo1?.owner.toBase58());
 
-        const token2 = "So11111111111111111111111111111111111111112";
+        const token2 = "5LRas81UFd6nFELj5Mm6KdXe6QXQLCsCpuM3LoWAjY1n";
 
         const mintInfo2 = await devnetConnection.getAccountInfo(new PublicKey(token2));
 
