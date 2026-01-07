@@ -51,3 +51,29 @@ export async function getPoolFromAddress(pair: string) {
 
     return pool;
 }
+
+export const createAMMPoolInDb = async (userId: number, pairAddress: string, lpTokenMint: string, tokenX: string, tokenXDecimals: number, tokenY: string, tokenYDecimals: number, feeAccount: string) => {
+
+    return prisma.createdAMMPool.create({
+
+        data: {
+
+            telegramId: BigInt(userId),
+
+            pairAddress: pairAddress,
+
+            lpTokenMint: lpTokenMint,
+
+            tokenX: tokenX,
+
+            tokenXDecimals: tokenXDecimals,
+
+            tokenY: tokenY,
+
+            tokenYDecimals: tokenYDecimals,
+
+            feeAccount: feeAccount
+        }
+    });
+
+};

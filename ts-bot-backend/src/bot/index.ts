@@ -54,7 +54,7 @@ import {
 from "./state/setCreatePoolState.js";
 import { getTokenDecimals } from "../utils/getTokenDecimals.js";
 import { buildCreatePoolTransaction } from "../services/createPoolTransaction.js";
-import { createPoolInDb } from "../db/pool.js";
+import { createPoolInDb, createAMMPoolInDb } from "../db/pool.js";
 import { 
     setCreatePositionStateStep1, setCreatePositionStateStep2,
     setCreatePositionStateStep3, setCreatePositionStateComplete }
@@ -3227,6 +3227,14 @@ bot.action("EXECUTE", async(ctx) => {
                 { parse_mode: "Markdown", ...homeKeyboard}
             );
         }
+
+        const pairAddress = createAMMPoolRes.pairAddress;
+
+        const lpTokenMint = createAMMPoolRes.lpTokenMint;
+
+        const feeAccount = createAMMPoolRes.feeAccount;
+
+        await createAMMPoolInDb(userId, pairAddress.toBase58(), lpTokenMint.toBase58(), token1, decimals1, token2, decimals2, feeAccount.toBase58());
 
         await setHomeState(userId);
 

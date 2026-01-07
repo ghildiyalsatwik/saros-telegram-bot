@@ -22,6 +22,7 @@ model User {
 
   LaunchedTokens      LaunchedToken[] @relation("UserLaunchedTokens")
   CreatedPools        CreatedPool[] @relation("UserCreatedPools")
+  CreatedAMMPools     CreatedAMMPool[]  @relation("UserCreatedAMMPools")
   CreatedPositions    CreatedPosition[]
   MintedTokens        MintedToken[] @relation("UserMintedTokens")
   LaunchedSPLTokens      LaunchedSPLToken[] @relation("UserLaunchedSPLTokens")
@@ -104,6 +105,22 @@ model CreatedPool {
 
   user            User     @relation("UserCreatedPools", fields: [telegramId], references: [telegramId])
   positions       CreatedPosition[]
+}
+
+model CreatedAMMPool {
+
+  id              String    @id @default(cuid())
+  telegramId      BigInt
+  pairAddress     String    @unique
+  lpTokenMint     String
+  tokenX          String
+  tokenXDecimals  Int
+  tokenY          String
+  tokenYDecimals  Int
+  feeAccount      String
+
+  user            User  @relation("UserCreatedAMMPools", fields: [telegramId], references: [telegramId])
+
 }
 
 model CreatedPosition {
