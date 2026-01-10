@@ -10,7 +10,7 @@ import {
     homeKeyboard, createWalletKeyboard, getBackHomeKeyboard, executeTransactionKeyboard,
     liquidityShapesKeyboard, removeLiquiditykeyboard,
     sarosDLMMSwapReceiveKeyboard, sarosDLMMSwapExactAmountKeyboard, findPoolKeyboard,
-    chooseAMMCurveKeyboard }
+    chooseAMMCurveKeyboard, sarosAMMSwapReceiveKeyboard }
 from "./ui/keyboards.js";
 import { 
     setSolTransferStateAddress, setSolTransferStateAmount,
@@ -45,7 +45,6 @@ import {
     setMintTokenStateStep3, setMintTokenStateStepComplete} 
 from "./state/setMintTokenState.js";
 import { accountExists } from "../utils/accountExists.js";
-import { getUserPublicKey } from "../utils/getUserPublicKey.js";
 import { buildMintTokenTransaction } from "../services/buildMintTokenTransaction.js";
 import { sendTransaction } from "../services/sendTransaction.js";
 import { 
@@ -102,7 +101,9 @@ from "./state/setCloseAllPositionsForPoolState.js";
 import { buildCloseAllPositionsForPoolTransaction }
 from "../services/buildCloseAllPositionsForPoolTransaction.js";
 import { mintedTokenExistsForUser } from "../utils/mintedTokenExistsForUser.js";
-import { setFindPoolStateComplete, setFindPoolStateStep1, setFindPoolStateStep2 } from "./state/setFindPoolState.js";
+import { setFindPoolStateComplete, setFindPoolStateStep1,
+    setFindPoolStateStep2 }
+from "./state/setFindPoolState.js";
 import { findPoolsByTokens } from "../services/findPoolsByTokens.js";
 import { setCreateAMMPoolStateStep1, setCreateAMMPoolStateStep2,
     setCreateAMMPoolStateStep3, setCreateAMMPoolStateStep4,
@@ -124,6 +125,12 @@ from "./state/setMintSPLTokenState.js";
 import { PublicKey } from "@solana/web3.js";
 import { buildMintSPLTokenTransaction } from "../services/buildMintSPLTokenTransaction.js";
 import { mintedSPLTokenExistsForUser } from "../utils/mintedSPLTokenExistsForUser.js";
+import { setSwapAMMStateStep1, setSwapAMMStateStep2,
+    setSwapAMMStateStep3, setSwapAMMStateStep4, setSwapAMMStateComplete }
+from "./state/setSwapAMMState.js";
+import { AMMPoolExists } from "../utils/AMMPoolExists.js";
+import { getSPLTokenDecimals } from "../utils/getSPLTokenDecimals.js";
+import { buildSwapAMMTransaction } from "../services/buildSwapAMMTransaction.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
@@ -836,7 +843,6 @@ bot.on(message("text"), async (ctx) => {
         
                 { parse_mode: "Markdown", ...executeTransactionKeyboard}
             );
-
         }
 
     }
@@ -1578,9 +1584,201 @@ bot.on(message("text"), async (ctx) => {
         }
     }
 
+    if(session.action === "SWAP_SAROS_AMM") {
+
+        if(session.step === "1") {
+
+            const pool = ctx.message.text;
+
+            if(!isValidSolanaAddress(pool)) {
+
+                return ctx.reply("Please enter a valid Solana address.", 
+
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard }
+                )
+            }
+
+            const { exists, pairAcc } = AMMPoolExists(pool);
+
+            if(!exists) {
+
+                return ctx.reply("No such AMM pool exists. Please enter a valid pool.", 
+
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard }
+                )
+
+            }
+
+            const tokenAMint = pairAcc!.tokenAMint;
+
+            const tokenBMint = pairAcc!.tokenBMint;
+
+            const tokenADecimals = await getSPLTokenDecimals(tokenAMint.toBase58());
+
+            const tokenBDecimals = await getSPLTokenDecimals(tokenBMint.toBase58());
+
+            await setSwapAMMStateStep2(userId, tokenAMint.toBase58(), tokenADecimals, tokenBMint.toBase58(), tokenBDecimals, pool);
+
+            return ctx.reply(`Do you want to receive token X: ${tokenAMint.toBase58()} or Y: ${tokenBMint.toBase58()}?`, 
+
+                { parse_mode: "Markdown", ...sarosAMMSwapReceiveKeyboard }
+            )
+        }
+
+        if(session.step === "3") {
+
+            const amount = ctx.message.text;
+
+            if(!isAmountValid(amount)) {
+
+                return ctx.reply("Please enter a valid amount", 
+
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard }
+                )
+            }
+
+            const parsedParams = JSON.parse(session!.params!);
+
+            const tokenX = parsedParams.tokenX;
+
+            const tokenXDecimals = parsedParams.tokenXDecimals;
+
+            const tokenY = parsedParams.tokenY;
+
+            const tokenYDecimals = parsedParams.tokenYDecimals;
+
+            const pool = parsedParams.pool;
+
+            const swapForY = parsedParams.swapForY;
+
+            await setSwapAMMStateStep4(userId, tokenX, tokenXDecimals, tokenY, tokenYDecimals, pool, false, parseFloat(amount));
+
+            return ctx.reply("Please enter an acceptable slippage amount", 
+
+                { parse_mode: "Markdown", ...getBackHomeKeyboard }
+            )
+        }
+
+        if(session.step === "4") {
+
+            const slippage = ctx.message.text;
+
+            if(!isValidSlippage(slippage)) {
+
+                return ctx.reply("Please enter a valid slippage amount.", 
+
+                    { parse_mode: "Markdown", ...getBackHomeKeyboard }
+                )
+            }
+
+            const parsedParams = JSON.parse(session!.params!);
+
+            const tokenX = parsedParams.tokenX;
+
+            const tokenXDecimals = parsedParams.tokenXDecimals;
+
+            const tokenY = parsedParams.tokenY;
+
+            const tokenYDecimals = parsedParams.tokenYDecimals;
+
+            const pool = parsedParams.pool;
+
+            const swapForY = parsedParams.swapForY;
+
+            const amount = parsedParams.amount;
+
+            await setSwapAMMStateComplete(userId, tokenX, tokenXDecimals, tokenY, tokenYDecimals, pool, false, amount, parseFloat(slippage));
+
+            return ctx.reply(
+            
+                "Slippage received. Press execute to confirm the transactions.",
+        
+                { parse_mode: "Markdown", ...executeTransactionKeyboard}
+            );
+        }
+    }
+
     await setHomeState(userId);
 
     return ctx.reply(getDefaultMessage(), homeKeyboard);
+
+});
+
+bot.action("SWAP_SAROS_AMM", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    await ctx.answerCbQuery("Preparing to swap with AMM...");
+
+    await setSwapAMMStateStep1(userId);
+
+    return ctx.reply(
+            
+        "Please specify the pool on which you want to swap.",
+
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
+
+});
+
+bot.action("RECEIVEXAMM", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    await ctx.answerCbQuery("You want token X...");
+
+    const session = await getSession(userId);
+
+    const parsedParams = JSON.parse(session!.params!);
+
+    const tokenX = parsedParams.tokenX;
+
+    const tokenXDecimals = parsedParams.tokenXDecimals;
+
+    const tokenY = parsedParams.tokenY;
+
+    const tokenYDecimals = parsedParams.tokenYDecimals;
+
+    const pool = parsedParams.pool;
+
+    await setSwapAMMStateStep3(userId, tokenX, tokenXDecimals, tokenY, tokenYDecimals, pool, false);
+
+    return ctx.reply(
+            
+        "Please specify the amount of token Y you want to put in.",
+
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
+});
+
+bot.action("RECEIVEYAMM", async (ctx) => {
+
+    const userId = ctx.from.id;
+
+    await ctx.answerCbQuery("You want token Y...");
+
+    const session = await getSession(userId);
+
+    const parsedParams = JSON.parse(session!.params!);
+
+    const tokenX = parsedParams.tokenX;
+
+    const tokenXDecimals = parsedParams.tokenXDecimals;
+
+    const tokenY = parsedParams.tokenY;
+
+    const tokenYDecimals = parsedParams.tokenYDecimals;
+
+    const pool = parsedParams.pool;
+
+    await setSwapAMMStateStep3(userId, tokenX, tokenXDecimals, tokenY, tokenYDecimals, pool, true);
+
+    return ctx.reply(
+            
+        "Please specify the amount of token X you want to put in.",
+
+        { parse_mode: "Markdown", ...getBackHomeKeyboard}
+    );
 
 });
 
@@ -3246,6 +3444,68 @@ bot.action("EXECUTE", async(ctx) => {
     
             { parse_mode: "Markdown", ...homeKeyboard}
         );
+    }
+
+    if(session?.action === "SWAP_SAROS_AMM") {
+
+        const parsedParams = JSON.parse(session!.params!);
+
+        const tokenX = parsedParams.tokenX;
+
+        const tokenXDecimals = parsedParams.tokenXDecimals;
+
+        const tokenY = parsedParams.tokenY;
+
+        const tokenYDecimals = parsedParams.tokenYDecimals;
+
+        const pool = parsedParams.pool;
+
+        const swapForY = parsedParams.swapForY;
+
+        const amount = parsedParams.amount;
+
+        const slippage = parsedParams.slippage;
+
+        const pubkey = session.publicKey!;
+
+        let finalAmount;
+
+        if(swapForY) {
+
+            finalAmount = BigInt(amount) * BigInt(10 ** tokenXDecimals);
+        
+        } else {
+
+            finalAmount = BigInt(amount) * BigInt(10 ** tokenYDecimals);
+        }
+
+        const tx = await buildSwapAMMTransaction(finalAmount, pool, swapForY, slippage, pubkey);
+
+        const signedTx = await signTransaction(userId, tx);
+
+        const {sig, failed} = await sendTransaction(userId, signedTx);
+
+        if(failed) {
+
+            await setHomeState(userId);
+
+            return ctx.reply(
+        
+                `Your transaction failed. Please try again.`,
+        
+                { parse_mode: "Markdown", ...homeKeyboard}
+            );
+        }
+
+        await setHomeState(userId);
+
+        return ctx.reply(
+        
+            `Your transaction is confirmed!\n Swap is succesful!\nTransaction Signature: ${sig}.`,
+    
+            { parse_mode: "Markdown", ...homeKeyboard}
+        );
+        
     }
 });
 

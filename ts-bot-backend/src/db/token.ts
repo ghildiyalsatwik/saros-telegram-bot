@@ -88,6 +88,21 @@ export async function getTokenByMintAddress(mintAddress: string) {
     return token;
 }
 
+export const getSPLTokenMintByAddress = async (mintAddress: string) => {
+
+    const token = await prisma.launchedSPLToken.findUnique({
+
+        where: {
+
+            mintAddress: mintAddress
+        }
+    
+    });
+
+    return token;
+
+};
+
 export async function getSPLTokenByMintAddress(mintAddress: string) {
 
     const token = await prisma.launchedSPLToken.findUnique({

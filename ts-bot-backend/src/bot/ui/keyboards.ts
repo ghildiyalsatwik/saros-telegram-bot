@@ -144,6 +144,19 @@ export const sarosDLMMSwapReceiveKeyboard = Markup.inlineKeyboard([
     ]
 ]);
 
+export const sarosAMMSwapReceiveKeyboard = Markup.inlineKeyboard([
+
+    [   
+        Markup.button.callback("Receive Token X", "RECEIVEXAMM"),
+
+        Markup.button.callback("Receive Token Y", "RECEIVEYAMM")
+    ],
+
+    [
+        Markup.button.callback("Go back Home", "HOME")
+    ]
+]);
+
 
 export const sarosDLMMSwapExactAmountKeyboard = Markup.inlineKeyboard([
 
