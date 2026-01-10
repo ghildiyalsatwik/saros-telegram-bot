@@ -1651,7 +1651,7 @@ bot.on(message("text"), async (ctx) => {
 
             const swapForY = parsedParams.swapForY;
 
-            await setSwapAMMStateStep4(userId, tokenX, tokenXDecimals, tokenY, tokenYDecimals, pool, false, parseFloat(amount));
+            await setSwapAMMStateStep4(userId, tokenX, tokenXDecimals, tokenY, tokenYDecimals, pool, swapForY, parseFloat(amount));
 
             return ctx.reply("Please enter an acceptable slippage amount", 
 
@@ -1687,7 +1687,7 @@ bot.on(message("text"), async (ctx) => {
 
             const amount = parsedParams.amount;
 
-            await setSwapAMMStateComplete(userId, tokenX, tokenXDecimals, tokenY, tokenYDecimals, pool, false, amount, parseFloat(slippage));
+            await setSwapAMMStateComplete(userId, tokenX, tokenXDecimals, tokenY, tokenYDecimals, pool, swapForY, amount, parseFloat(slippage));
 
             return ctx.reply(
             
