@@ -2,7 +2,7 @@ import { SarosDLMMPair, MODE } from "@saros-finance/dlmm-sdk";
 import { devnetConnection } from "./connections.js";
 import { PublicKey } from "@solana/web3.js";
 
-export function getSarosDLLMPair(pair: string) {
+export async function getSarosDLLMPair(pair: string) {
 
     const sarosDLMMPair = new SarosDLMMPair(
 
@@ -14,6 +14,8 @@ export function getSarosDLLMPair(pair: string) {
 
         new PublicKey(pair)
     );
+
+    await sarosDLMMPair.refreshState(pair);
 
     return sarosDLMMPair;
 }

@@ -131,6 +131,8 @@ from "./state/setSwapAMMState.js";
 import { AMMPoolExists } from "../utils/AMMPoolExists.js";
 import { getSPLTokenDecimals } from "../utils/getSPLTokenDecimals.js";
 import { buildSwapAMMTransaction } from "../services/buildSwapAMMTransaction.js";
+import { signCreatePositionTransaction } from "../services/signCreatePositionTransaction.js";
+import { sendCreatePositionTransaction } from "../services/sendCreatePositionTransaction.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
@@ -2877,11 +2879,11 @@ bot.action("EXECUTE", async(ctx) => {
 
         const upper = parsedParams.upper;
 
-        const {tx, positionMintPubKey} = await buildCreatePositionTransaction(userId, pair, lower, upper);
+        const {tx, positionMintPubKey, positionMint} = await buildCreatePositionTransaction(userId, pair, lower, upper);
 
-        const signedTx = await signTransaction(userId, tx);
+        const signedTx = await signCreatePositionTransaction(userId, tx, positionMint);
 
-        const {sig, failed} = await sendTransaction(userId, signedTx);
+        const {sig, failed} = await sendCreatePositionTransaction(signedTx, positionMint, userId);
 
         if(failed) {
 

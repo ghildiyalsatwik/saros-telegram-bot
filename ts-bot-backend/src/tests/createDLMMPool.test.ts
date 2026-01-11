@@ -30,7 +30,7 @@ describe("Creating Saros DLMM pool", () => {
 
         const decimalsY = 9;
         
-        const binStep = 10;
+        const binStep = 20;
 
         const ratePrice = 1;
 
