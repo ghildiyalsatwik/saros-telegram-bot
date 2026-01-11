@@ -4,7 +4,7 @@ import { PublicKey } from "@solana/web3.js";
 
 export async function buildAddLiquidityTransaction(pair: string, pubkey: string, positionMint: string, lower: number, upper: number, shape: string, amountX: number, amountY: number, tokenXDecimals: number, tokenYDecimals: number) {
 
-    const sarosDLMMPair = getSarosDLLMPair(pair);
+    const sarosDLMMPair = await getSarosDLLMPair(pair);
 
     let finalShape;
 
@@ -39,4 +39,42 @@ export async function buildAddLiquidityTransaction(pair: string, pubkey: string,
 
     return tx;
 
+}
+
+export async function buildAddLiquidityTransactionTest(pair: string, pubkey: string, positionMint: string, lower: number, upper: number, shape: string, amountX: number, amountY: number) {
+
+    const sarosDLMMPair = await getSarosDLLMPair(pair);
+
+    let finalShape;
+
+    if(shape === "SPOT") {
+
+        finalShape = LiquidityShape.Spot;
+   
+    } else if(shape === "CURVE") {
+
+        finalShape = LiquidityShape.Curve;
+    
+    } else {
+
+        finalShape = LiquidityShape.BidAsk;
+    }
+
+    const tx = await sarosDLMMPair.addLiquidityByShape({
+
+        positionMint: new PublicKey(positionMint),
+
+        payer: new PublicKey(pubkey),
+
+        amountTokenX: BigInt(Math.round(amountX * 1_000_000_000)),
+
+        amountTokenY: BigInt(Math.round(amountY * 1_000_000_000)),
+
+        liquidityShape: finalShape,
+
+        binRange: [lower, upper]
+
+    });
+
+    return tx;
 }
