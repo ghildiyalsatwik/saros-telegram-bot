@@ -21,7 +21,7 @@ describe("Testing token launch", () => {
 
     it("testing token launch", async () => {
 
-        const { tx, mintKeypair } = await buildLaunchTokenTransaction(pubkey, "COSMOS", "COS", 9, 2);
+        const { tx, mintKeypair } = await buildLaunchTokenTransaction(pubkey, "TRITON2", "TR2", 9, 1);
 
         let sig;
 
@@ -36,7 +36,7 @@ describe("Testing token launch", () => {
             throw new Error(`Transaction failed with error: ${err}`);
         }
 
-        console.log(`Transaction succeeded.\nSignature: ${sig}`);
+        console.log(`Transaction succeeded.\nSignature: ${sig}.\nToken mint has been created at address: ${mintKeypair.publicKey.toBase58()}`);
 
     }, 20000);
 

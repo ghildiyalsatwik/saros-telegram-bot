@@ -1425,7 +1425,6 @@ bot.on(message("text"), async (ctx) => {
 
                 return ctx.reply(reply, { parse_mode: "Markdown", ...homeKeyboard});
 
-
             } else {
 
                 await setFindPoolStateComplete(userId, tokenCount, token1);

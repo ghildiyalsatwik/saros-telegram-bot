@@ -23,15 +23,21 @@ describe("Testing token mint", () => {
 
     it("testing token mint", async () => {
 
+        const tokenMint = "33XvJdxU5eh9fMfKsuQ891xkPkzzS5TwWiiYoAgQCNNi";
+
+        const userPubKey = wallet.publicKey.toBase58();
+
+        const amount = 100;
+
         const tx = await buildMintTokenTransaction(
             
             pubkey, 
             
-            "56pNF8HPNCppa5uW34zRyMBQdVdY68SNuhVM5TfVdn2d",
+            tokenMint,
             
-            "D6cjkmS61Ar8UGFCCsq7QSH8y35WWy28vwYAJKNK6EXC",
+            userPubKey,
 
-            10,
+            amount,
 
             9
         );
@@ -49,8 +55,8 @@ describe("Testing token mint", () => {
             throw new Error(`Transaction failed with error: ${err}`);
         }
 
-        console.log(`Transaction succeeded.\nSignature: ${sig}`);
+        console.log(`Transaction succeeded.\nSignature: ${sig}.\n${amount} of tokens: ${tokenMint} have been minted to user: ${userPubKey}`);
 
-    }, 20000);
+    }, 30000);
 
 });
