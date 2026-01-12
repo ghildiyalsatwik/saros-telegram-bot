@@ -89,7 +89,7 @@ describe("Testing adding liquidity into a DLMM position", () => {
             
             } catch(err) {
 
-                throw new Error();
+                throw new Error(`Sol could not be wrapped into WSOL.\n Error: ${err}`);
             }
 
             console.log(`${amountLeft} SOL wrapped into WSOL.\nSignature: ${sig2}`);
