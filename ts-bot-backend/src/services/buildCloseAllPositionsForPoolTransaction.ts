@@ -4,9 +4,7 @@ import { RemoveLiquidityType } from "@saros-finance/dlmm-sdk";
 
 export async function buildCloseAllPositionsForPoolTransaction(pair: string, pubkey: string) {
 
-    const sarosDLLMPair = getSarosDLLMPair(pair);
-
-    await sarosDLLMPair.refreshState();
+    const sarosDLLMPair = await getSarosDLLMPair(pair);
 
     const positions = await sarosDLLMPair.getUserPositions({
 

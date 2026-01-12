@@ -3,7 +3,7 @@ import { PublicKey } from "@solana/web3.js";
 
 export async function buildSarosDLMMSwapTransaction(pubkey: string, pair: string, swapForY_: string, isExactInput_: string, amount_: number, slippage: number) {
 
-    const sarosDLLMPair = getSarosDLLMPair(pair);
+    const sarosDLLMPair = await getSarosDLLMPair(pair);
 
     const metadata = sarosDLLMPair.getPairMetadata();
 

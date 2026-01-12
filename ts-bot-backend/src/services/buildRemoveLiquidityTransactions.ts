@@ -4,7 +4,7 @@ import { RemoveLiquidityType } from "@saros-finance/dlmm-sdk";
 
 export async function buildRemoveLiquidityTransactions(positionMint: string, pubkey: string, pair: string, token: RemoveLiquidityType) {
 
-    const sarosDLLMPair = getSarosDLLMPair(pair);
+    const sarosDLLMPair = await getSarosDLLMPair(pair);
 
     const removeLiquidityRes = await sarosDLLMPair.removeLiquidity({
 

@@ -38,9 +38,9 @@ describe("Testing adding liquidity into a DLMM position", () => {
 
         const shape = "SPOT";
 
-        const amountX = 0.0001;
+        const amountX = 1;
 
-        const amountY = 0.0001;
+        const amountY = 1;
 
         const { exists, ata } = await wSOLATAexists(pubkey);
 

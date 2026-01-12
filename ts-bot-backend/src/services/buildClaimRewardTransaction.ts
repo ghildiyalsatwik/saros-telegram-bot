@@ -3,7 +3,7 @@ import { PublicKey } from "@solana/web3.js";
 
 export async function buildClaimRewardTransaction(pubkey: string, positionMint: string, pair: string, rewardTokenMint: string) {
 
-    const sarosDLMMPair = getSarosDLLMPair(pair);
+    const sarosDLMMPair = await getSarosDLLMPair(pair);
 
     const tx = await sarosDLMMPair.claimReward({
 
