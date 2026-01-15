@@ -1,7 +1,6 @@
 import { Keypair, sendAndConfirmTransaction } from "@solana/web3.js";
 import bs58 from "bs58";
-import { beforeAll, describe, it, expect } from "vitest";
-import { getToken2022Balance } from "../services/getToken2022Balance.js";
+import { beforeAll, describe, it } from "vitest";
 import { devnetConnection } from "../utils/connections.js";
 import { buildSarosDLMMSwapTransaction } from "../services/buildSarosDLMMSwapTransaction.js";
 

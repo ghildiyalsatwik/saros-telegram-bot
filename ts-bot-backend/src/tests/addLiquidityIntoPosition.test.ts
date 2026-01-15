@@ -1,10 +1,10 @@
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { Keypair } from "@solana/web3.js";
 import bs58 from "bs58";
 import { devnetConnection } from "../utils/connections.js";
 import { beforeAll, describe, it } from "vitest";
 import { buildAddLiquidityTransactionTest } from "../services/buildAddLiquidityTransaction.js";
 import { sendAndConfirmTransaction } from "@solana/web3.js";
-import { wSOLATAexists } from "../utils/WSOLATAExists.js";
+import { wSOLATAexists } from "../utils/wSOLATAExists.js";
 import { buildWSOLATATransaction } from "../services/buildCreateWSOLATATransaction.js";
 import { getSPLTokenBalanceTest } from "../services/getSPLTokenBalance.js";
 import { buildWrapSOLTransaction } from "../services/buildWrapSolTransaction.js";
