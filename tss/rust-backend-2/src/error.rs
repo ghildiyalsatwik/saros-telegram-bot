@@ -20,6 +20,7 @@ pub enum Error {
     KeyPairIsNotInKeys,
     InvalidScalar(String),
     InvalidPoint(String),
+    NotEnoughKeys
 }
 
 impl Display for Error {
@@ -40,6 +41,7 @@ impl Display for Error {
             Error::KeyPairIsNotInKeys => write!(f, "Keypair is not included in key aggregation"),
             Error::InvalidPoint(e) => write!(f, "Invalid Ed25519 point: {}", e),
             Error::InvalidScalar(e) => write!(f, "Invalid scalar: {}", e),
+            Error::NotEnoughKeys => write!(f, "Not enough keys")
         }
     }
 }
