@@ -1,0 +1,7 @@
+ALTER TABLE users1
+  ALTER COLUMN id TYPE TEXT
+  USING id::text;
+
+ALTER TABLE users2
+  ALTER COLUMN id TYPE TEXT
+  USING id::text;
