@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "node --loader ts-node/esm src/index.ts"
+    "dev": "node --loader ts-node/esm src/solTransfer.ts",
+    "dev2": "node --loader ts-node/esm src/tokenTransfer.ts"
   },
   "keywords": [],
   "author": "",

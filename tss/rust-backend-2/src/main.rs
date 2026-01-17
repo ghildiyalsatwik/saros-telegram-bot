@@ -49,16 +49,6 @@ struct GenerateResponse {
 }
 
 #[derive(Deserialize)]
-struct AggregateRequest {
-    keys: Vec<String>,
-}
-
-#[derive(Serialize)]
-struct AggregateResponse {
-    aggregated_pubkey: String,
-}
-
-#[derive(Deserialize)]
 struct StepOneRequest {
     external_user_id: String,
 }
@@ -132,27 +122,6 @@ async fn generate(
     })
 }
 
-async fn aggregate_keys(
-    Json(req): Json<AggregateRequest>,
-) -> Json<AggregateResponse> {
-    let pubkeys: Vec<Pubkey> = req
-        .keys
-        .iter()
-        .map(|k| Pubkey::from_str(k).expect("invalid pubkey string"))
-        .collect();
-
-    let agg = tss::key_agg(pubkeys, None).expect("key aggregation failed");
-
-    let agg_vec = agg.agg_public_key.to_bytes(true).to_vec();
-    let agg_bytes: [u8; 32] = agg_vec.try_into().expect("expected 32 bytes");
-
-    let agg_pubkey = Pubkey::from(agg_bytes);
-
-    Json(AggregateResponse {
-        aggregated_pubkey: agg_pubkey.to_string(),
-    })
-}
-
 async fn step_one(
     State(state): State<AppState>,
     Json(req): Json<StepOneRequest>,
@@ -203,6 +172,8 @@ async fn step_two(
     State(state): State<AppState>,
     Json(req): Json<StepTwoRequest>,
 ) -> Json<StepTwoResponse> {
+
+    println!("Inside step two.");
     
     let row_user = sqlx::query(
         r#"
@@ -279,6 +250,8 @@ async fn step_two(
     .await
     .expect("failed to delete signer state");
 
+    println!("Returning from step two.");
+
     Json(StepTwoResponse {
         external_user_id: req.external_user_id,
         partial_signature,
@@ -302,7 +275,6 @@ async fn main() {
 
     let app = Router::new()
         .route("/generate", post(generate))
-        .route("/aggregate_keys", post(aggregate_keys))
         .route("/step_one", post(step_one))
         .route("/step_two", post(step_two))
         .with_state(state);

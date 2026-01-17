@@ -14,6 +14,7 @@ use solana_sdk::{
     pubkey::Pubkey,
     signature::{Keypair, Signer},
     transaction::Transaction,
+    commitment_config::CommitmentConfig
 };
 use std::{
     collections::HashMap,
@@ -31,6 +32,7 @@ use crate::serialization::{
 use solana_client::rpc_client::RpcClient;
 use sqlx::PgPool;
 use sqlx::Row;
+use solana_client::nonblocking::rpc_client::RpcClient as RpcClient2;
 
 #[derive(Clone)]
 struct AppState {
@@ -99,6 +101,16 @@ struct FinalSignResponse {
 struct BlockhashResponse {
     blockhash: String,
     last_valid_block_height: u64,
+}
+
+#[derive(Deserialize)]
+struct SendTxRequest {
+    tx: String,
+}
+
+#[derive(Serialize)]
+struct SendTxResponse {
+    signature: String,
 }
 
 async fn generate(
@@ -209,6 +221,8 @@ async fn step_two(
     State(state): State<AppState>,
     Json(req): Json<StepTwoRequest>,
 ) -> Json<StepTwoResponse> {
+
+    println!("Inside step two");
     
     let row_user = sqlx::query(
         r#"
@@ -285,6 +299,8 @@ async fn step_two(
     .await
     .expect("failed to delete signer state");
 
+    println!("Returning from step two.");
+
     Json(StepTwoResponse {
         external_user_id: req.external_user_id,
         partial_signature,
@@ -294,6 +310,8 @@ async fn step_two(
 async fn finalize(
     Json(req): Json<FinalSignRequest>
 ) -> Json<FinalSignResponse> {
+
+    println!("Inside finalize.");
 
     let tx_bytes = base64::engine::general_purpose::STANDARD
         .decode(&req.tx)
@@ -313,6 +331,7 @@ async fn finalize(
         .map(|k| Pubkey::from_str(k).unwrap())
         .collect();
 
+    let payer = tx.message.account_keys[0];
     
     let full_tx = tss::aggregate_and_attach_signature(tx, signer_keys, partials)
         .expect("failed to aggregate");
@@ -320,6 +339,10 @@ async fn finalize(
     let rpc_url = std::env::var("RPC_URL").expect("RPC_URL not set");
     
     let rpc = RpcClient::new(rpc_url);
+    
+    let bal = rpc.get_balance(&payer).unwrap();
+        
+    println!("payer {} balance {}", payer, bal);
 
     let sig = rpc.send_transaction(&full_tx).expect("send failed");
 
@@ -345,10 +368,29 @@ async fn get_blockhash() -> Json<BlockhashResponse> {
         .get_block_height()
         .expect("failed to fetch block height");
 
+    println!("Returning from finalize.");
+
     Json(BlockhashResponse {
         blockhash: blockhash.to_string(),
         last_valid_block_height: block_height + 150,
     })
+}
+
+async fn send_tx(Json(req): Json<SendTxRequest>) -> Json<SendTxResponse> {
+    let rpc_url = std::env::var("RPC_URL").expect("RPC_URL not set");
+    let rpc = RpcClient2::new_with_commitment(rpc_url, CommitmentConfig::confirmed());
+
+    let tx_bytes = base64::engine::general_purpose::STANDARD
+        .decode(&req.tx)
+        .expect("invalid base64");
+    let tx: Transaction = bincode::deserialize(&tx_bytes)
+        .expect("invalid tx");
+
+    
+    let sig = rpc.send_and_confirm_transaction(&tx).await
+        .expect("send failed");
+
+    Json(SendTxResponse { signature: sig.to_string() })
 }
 
 #[tokio::main]
@@ -373,6 +415,7 @@ async fn main() {
         .route("/step_two", post(step_two))
         .route("/finalize", post(finalize))
         .route("/get_blockhash", post(get_blockhash))
+        .route("/send_tx", post(send_tx))
         .with_state(state);
 
     println!("TSS Rust backend 1 running at http://{addr}");
