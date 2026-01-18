@@ -1,4 +1,4 @@
-import { PublicKey, Keypair, SystemProgram, Transaction, Connection, sendAndConfirmTransaction, type Signer } from "@solana/web3.js";
+import { PublicKey, Keypair, SystemProgram, Transaction } from "@solana/web3.js";
 import axios from "axios";
 import bs58 from "bs58";
 import dotenv from "dotenv";
@@ -27,26 +27,19 @@ type FinalSignResponse = {
     tx_signature: string;
 };
 
-type SendTxResponse = {
+export type SendTxResponse = {
     signature: string;
 };
 
-const SERVER_1_URL = process.env.SERVER_1_URL;
+export const SERVER_1_URL = process.env.SERVER_1_URL;
 
 const SERVER_2_URL = process.env.SERVER_2_URL;
 
 const TEST_PRIVATE_KEY = process.env.TEST_PRIVATE_KEY!;
 
-if(!process.env.DEVNET_RPC_URL) {
+export const wallet = Keypair.fromSecretKey(bs58.decode(TEST_PRIVATE_KEY));
 
-    throw new Error("Devnet RPC URL has not been set.");
-}
-
-const DEVNET_RPC_URL = process.env.DEVNET_RPC_URL;
-
-const wallet = Keypair.fromSecretKey(bs58.decode(TEST_PRIVATE_KEY));
-
-async function generate(signerId: string, serverId: number): Promise<GenerateResponse> {
+export async function generate(signerId: string, serverId: number): Promise<GenerateResponse> {
 
     let res;
 
@@ -74,14 +67,14 @@ async function generate(signerId: string, serverId: number): Promise<GenerateRes
     return res;
 }
 
-async function aggregateKeys(keys: string[]): Promise<AggregateResponse> {
+export async function aggregateKeys(keys: string[]): Promise<AggregateResponse> {
 
     const { data } = await axios.post(`${SERVER_1_URL}/aggregate_keys`, { keys });
 
     return data;
 }
 
-async function stepOne(signerId: string, serverId: number): Promise<StepOneResponse> {
+export async function stepOne(signerId: string, serverId: number): Promise<StepOneResponse> {
 
     let res;
 
@@ -110,7 +103,7 @@ async function stepOne(signerId: string, serverId: number): Promise<StepOneRespo
     return res;
 }
 
-function buildSOLTransferTransaction(sender: PublicKey, receiver: PublicKey, amount: number, multiplier: number): Transaction {
+export function buildSOLTransferTransaction(sender: PublicKey, receiver: PublicKey, amount: number, multiplier: number): Transaction {
 
     amount *= (10 ** multiplier);
 
@@ -133,14 +126,14 @@ function buildSOLTransferTransaction(sender: PublicKey, receiver: PublicKey, amo
     return tx;
 }
 
-async function getBlockhash() {
+export async function getBlockhash() {
 
     const { data } = await axios.post(`${SERVER_1_URL}/get_blockhash`);
 
     return data;
 }
 
-async function stepTwo(signerId: string, serverId: number, txbase64: string, keys: string[], firstMessages: string[]): Promise<StepTwoResponse> {
+export async function stepTwo(signerId: string, serverId: number, txbase64: string, keys: string[], firstMessages: string[]): Promise<StepTwoResponse> {
 
     let res;
 
@@ -178,7 +171,7 @@ async function stepTwo(signerId: string, serverId: number, txbase64: string, key
     return res;
 }
 
-async function finalizeTx(txBase64: string, partialSigs: string[], keys: string[]): Promise<FinalSignResponse> {
+export async function finalizeTx(txBase64: string, partialSigs: string[], keys: string[]): Promise<FinalSignResponse> {
 
     const { data } = await axios.post(`${SERVER_1_URL}/finalize`, {
 
@@ -192,7 +185,7 @@ async function finalizeTx(txBase64: string, partialSigs: string[], keys: string[
     return data;
 }
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+export const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 async function main() {
 
@@ -304,4 +297,4 @@ async function main() {
     console.log(`Test successful!\nTransaction signature: ${finalRes.tx_signature}`);
 }
 
-await main();
+// await main();
