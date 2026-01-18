@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "node --loader ts-node/esm src/solTransfer.ts",
-    "dev2": "node --loader ts-node/esm src/tokenTransfer.ts"
+    "dev2": "node --loader ts-node/esm src/tokenTransfer.ts",
+    "dev3": "node --loader ts-node/esm src/mintSPLToken.ts"
   },
   "keywords": [],
   "author": "",

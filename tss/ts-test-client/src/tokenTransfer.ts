@@ -7,8 +7,6 @@ import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress,
     createAssociatedTokenAccountIdempotentInstruction, TOKEN_2022_PROGRAM_ID, createTransferCheckedInstruction }
 from "@solana/spl-token";
 import axios from "axios";
-import dotenv from "dotenv";
-dotenv.config();
 
 async function buildSPLTokenTransferTransaction(sender: PublicKey, receiver: PublicKey, amount: number, multiplier: number, mint: PublicKey, decimals: number, id: number): Promise<Transaction> {
 

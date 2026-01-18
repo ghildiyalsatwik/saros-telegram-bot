@@ -18,7 +18,7 @@ type StepOneResponse = {
     public_message: string;
 };
   
-type StepTwoResponse = {
+export type StepTwoResponse = {
     signer_id: string;
     partial_signature: string;
 };
@@ -33,7 +33,7 @@ export type SendTxResponse = {
 
 export const SERVER_1_URL = process.env.SERVER_1_URL;
 
-const SERVER_2_URL = process.env.SERVER_2_URL;
+export const SERVER_2_URL = process.env.SERVER_2_URL;
 
 const TEST_PRIVATE_KEY = process.env.TEST_PRIVATE_KEY!;
 

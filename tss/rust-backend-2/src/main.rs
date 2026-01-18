@@ -258,6 +258,98 @@ async fn step_two(
     })
 }
 
+async fn step_two_(
+    State(state): State<AppState>,
+    Json(req): Json<StepTwoRequest>,
+) -> Json<StepTwoResponse> {
+
+    println!("Inside step two");
+    
+    let row_user = sqlx::query(
+        r#"
+        SELECT secret_key
+        FROM users2
+        WHERE external_user_id = $1
+        "#
+    )
+    .bind(&req.external_user_id)
+    .fetch_one(&state.db)
+    .await
+    .expect("user not found / db error");
+
+    let secret_bytes: Vec<u8> = row_user.get("secret_key");
+
+    let keypair = Keypair::from_bytes(&secret_bytes)
+        .expect("invalid secret key bytes in DB (expected 64 bytes)");
+
+
+    let row_state = sqlx::query(
+        r#"
+        SELECT secret_state
+        FROM signer_state2
+        WHERE external_user_id = $1
+        "#
+    )
+    .bind(&req.external_user_id)
+    .fetch_one(&state.db)
+    .await
+    .expect("no signer_state found for user (step_one missing?)");
+
+    let secret_state_b58: String = row_state.get("secret_state");
+
+    let secret_state =
+        SecretAggStepOne::deserialize_bs58(secret_state_b58.as_bytes())
+            .expect("bad SecretAggStepOne stored in DB");
+
+    
+    let tx_bytes = base64::engine::general_purpose::STANDARD
+        .decode(&req.tx)
+        .expect("invalid base64 tx");
+
+    let tx: Transaction = bincode::deserialize(&tx_bytes)
+        .expect("failed to deserialize transaction");
+
+    let required = tx.message.header.num_required_signatures as usize;
+
+    
+    let keys: Vec<Pubkey> = req
+        .keys
+        .iter()
+        .map(|k| Pubkey::from_str(k).expect("invalid pubkey"))
+        .collect();
+
+    
+    let first_messages: Vec<AggMessage1> = req
+        .first_messages
+        .iter()
+        .map(|s| AggMessage1::deserialize_bs58(s.as_bytes()).expect("bad AggMessage1"))
+        .collect();
+
+    
+    let partial = tss::step_two_(&keypair, tx, keys, first_messages, secret_state)
+        .expect("step_two failed");
+
+    let partial_signature = partial.serialize_bs58();
+
+    sqlx::query(
+        r#"
+        DELETE FROM signer_state2
+        WHERE external_user_id = $1
+        "#
+    )
+    .bind(&req.external_user_id)
+    .execute(&state.db)
+    .await
+    .expect("failed to delete signer state");
+
+    println!("Returning from step two.");
+
+    Json(StepTwoResponse {
+        external_user_id: req.external_user_id,
+        partial_signature,
+    })
+}
+
 #[tokio::main]
 async fn main() {
 
@@ -277,6 +369,7 @@ async fn main() {
         .route("/generate", post(generate))
         .route("/step_one", post(step_one))
         .route("/step_two", post(step_two))
+        .route("/step_two_", post(step_two_))
         .with_state(state);
 
     println!("TSS Rust backend 2 running at http://{addr}");

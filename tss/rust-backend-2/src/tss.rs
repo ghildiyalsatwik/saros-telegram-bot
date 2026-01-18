@@ -121,3 +121,33 @@ pub fn step_two(
     let sig = tx.signatures[0];
     Ok(PartialSignature(sig))
 }
+
+pub fn step_two_(
+    keypair: &Keypair,
+    tx: Transaction,
+    keys: Vec<Pubkey>,
+    first_messages: Vec<AggMessage1>,
+    secret_state: SecretAggStepOne,
+) -> Result<PartialSignature, Error> {
+    let other_nonces: Vec<_> = first_messages
+        .into_iter()
+        .map(|msg1| msg1.public_nonces.R)
+        .collect();
+
+    let aggkey = key_agg(keys, Some(keypair.pubkey()))?;
+    let extended_kepair =
+        ExpandedKeyPair::create_from_private_key(keypair.secret().to_bytes());
+
+    let signer = PartialSigner {
+        signer_private_nonce: secret_state.private_nonces,
+        signer_public_nonce: secret_state.public_nonces,
+        other_nonces,
+        extended_kepair,
+        aggregated_pubkey: aggkey,
+    };
+
+    let msg_bytes = tx.message.serialize();
+    let sig = signer.sign_message(&msg_bytes);
+
+    Ok(PartialSignature(sig))
+}

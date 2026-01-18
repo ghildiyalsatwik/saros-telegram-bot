@@ -10,6 +10,8 @@ use multi_party_eddsa::protocols::musig2::{PrivatePartialNonces, PublicPartialNo
 use solana_sdk::signature::{Signature, SignerError};
 use solana_sdk::transaction::Transaction;
 use crate::serialization::Error as SerError;
+use ed25519_dalek::{Signature as DalekSignature, Verifier, PublicKey};
+
 
 pub fn key_agg(
     keys: Vec<Pubkey>,
@@ -122,6 +124,36 @@ pub fn step_two(
     Ok(PartialSignature(sig))
 }
 
+pub fn step_two_(
+    keypair: &Keypair,
+    tx: Transaction,
+    keys: Vec<Pubkey>,
+    first_messages: Vec<AggMessage1>,
+    secret_state: SecretAggStepOne,
+) -> Result<PartialSignature, Error> {
+    let other_nonces: Vec<_> = first_messages
+        .into_iter()
+        .map(|msg1| msg1.public_nonces.R)
+        .collect();
+
+    let aggkey = key_agg(keys, Some(keypair.pubkey()))?;
+    let extended_kepair =
+        ExpandedKeyPair::create_from_private_key(keypair.secret().to_bytes());
+
+    let signer = PartialSigner {
+        signer_private_nonce: secret_state.private_nonces,
+        signer_public_nonce: secret_state.public_nonces,
+        other_nonces,
+        extended_kepair,
+        aggregated_pubkey: aggkey,
+    };
+
+    let msg_bytes = tx.message.serialize();
+    let sig = signer.sign_message(&msg_bytes);
+
+    Ok(PartialSignature(sig))
+}
+
 pub fn aggregate_and_attach_signature(
     mut tx: Transaction,
     keys: Vec<Pubkey>,
@@ -131,7 +163,6 @@ pub fn aggregate_and_attach_signature(
     if signatures.is_empty() {
         return Err(Error::MismatchMessages);
     }
-
     
     let aggkey = key_agg(keys, None)?;
 
@@ -145,6 +176,11 @@ pub fn aggregate_and_attach_signature(
 
     
     let r0 = &signatures[0].0.as_ref()[..32];
+    
+    for (i, s) in signatures.iter().enumerate() {
+        println!("[attach] R[{}] = {}", i, hex::encode(&s.0.as_ref()[..32]));
+    }
+    
     if !signatures
         .iter()
         .all(|s| &s.0.as_ref()[..32] == r0)
@@ -199,12 +235,17 @@ pub fn aggregate_and_attach_signature(
     if tx.signatures.len() != required {
         tx.signatures = vec![Signature::default(); required];
     }
-
     
     tx.signatures[sig_index] = Signature::new(&bytes);
-
     
-    tx.verify().map_err(|_| Error::InvalidSignature)?;
+    //tx.verify().map_err(|_| Error::InvalidSignature)?;
+
+    if let Err(e) = tx.verify() {
+        println!("[attach] tx.verify() FAILED: {:?}", e);
+        println!("[attach] required = {}", required);
+        println!("[attach] signatures vector = {:?}", tx.signatures.iter().map(|s| s.to_string()).collect::<Vec<_>>());
+        return Err(Error::InvalidSignature);
+    }
 
     println!(
         "[aggregate] full signed tx (hex) = {}",
