@@ -44,8 +44,6 @@ They expose the same logical API (two-party signing), with Server 1 also acting 
 
 ### Endpoints (conceptual)
 
-> Names may differ slightly in your code (`step_two` vs `step_two_`), but the roles are the same.
-
 - `POST /generate`
   - Creates/loads a participant key share for an `external_user_id`
   - Returns that server’s public key
