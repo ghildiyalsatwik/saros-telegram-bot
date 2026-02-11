@@ -1,0 +1,17 @@
+import { Redis } from "ioredis";
+
+export const redis = new Redis({
+  
+    host: "127.0.0.1",
+  
+    port: 6382,
+  
+    maxRetriesPerRequest: null,
+
+});
+
+redis.on("connect", () => {
+  
+    console.log("Connected to Redis: redis://localhost:6382");
+
+});
